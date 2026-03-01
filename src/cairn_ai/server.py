@@ -224,7 +224,8 @@ def set_status(
             "INSERT INTO sync_points (agent, sync_num, summary, created_at) VALUES (?, ?, ?, ?)",
             (agent, sync_num, summary, now),
         )
-        sync_marker = f"#{sync_num}"
+        glyph_num = _increment_glyph(agent, conn)
+        sync_marker = f"#{sync_num} (glyph:{glyph_num})"
 
     conn.commit()
 
@@ -282,13 +283,14 @@ def write_handoff(
     # Append to journal
     append_handoff_to_journal(agent, handoff_content, now)
 
-    # Store in DB
+    # Store in DB + increment glyph
     conn = get_db()
     conn.execute(
         """INSERT INTO handoffs (agent, ts, summary, accomplished, pending, discoveries)
            VALUES (?, ?, ?, ?, ?, ?)""",
         (agent, now, summary, accomplished, pending, discoveries),
     )
+    glyph_num = _increment_glyph(agent, conn)
     conn.commit()
 
     # Mark session as cleanly closed
@@ -318,7 +320,7 @@ def write_handoff(
     conn.close()
 
     return (
-        f"Handoff written for {agent}: journal + DB. "
+        f"Handoff written for {agent}: journal + DB. Glyph: {glyph_num}. "
         f"Session marked CLOSE:HANDOFF. Next session will find it in recover_context()."
     )
 
