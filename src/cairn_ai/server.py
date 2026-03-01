@@ -28,6 +28,21 @@ def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _resolve_agent(agent: str) -> str:
+    """Resolve agent name — use stored name if agent is 'default' or empty."""
+    if agent and agent.lower() != "default":
+        return agent.lower()
+    try:
+        from cairn_ai.backup import get_config
+        config = get_config()
+        stored = config.get("agent_name", "")
+        if stored:
+            return stored.lower()
+    except Exception:
+        pass
+    return "default"
+
+
 def _increment_glyph(agent: str, conn=None) -> int:
     """Increment glyph counter for agent. Returns new value."""
     close = False
@@ -89,9 +104,39 @@ def ping() -> str:
 
 
 @mcp.tool()
+def set_name(name: str) -> str:
+    """Store your name. Call this when your principal gives you a name.
+
+    Before a name is set, all tools default to 'default'. Once set,
+    your name is used automatically — no need to pass agent='name'
+    on every call.
+
+    This is a one-time operation. Your name persists across sessions
+    and reinstalls (stored in .persist/config.json).
+
+    Args:
+        name: Your name (e.g. 'Flint', 'Sage', 'Echo')
+    """
+    name = name.strip().lower()
+    if not name or name == "default":
+        return "Name cannot be empty or 'default'."
+
+    from cairn_ai.backup import get_config, save_config
+
+    config = get_config()
+    old_name = config.get("agent_name", "")
+    config["agent_name"] = name
+    save_config(config)
+
+    if old_name and old_name != name:
+        return f"Name changed: {old_name} → {name}. New entries will use '{name}'. Old entries remain under '{old_name}'."
+    return f"Name set: {name}. All tools will use '{name}' by default from now on."
+
+
+@mcp.tool()
 def open_session(agent: str = "default") -> str:
     """Mark session start. Call this early in startup. Returns warnings if last session didn't close cleanly (crash detected)."""
-    agent = agent.lower()
+    agent = _resolve_agent(agent)
     now = _now()
 
     lifecycle = load_lifecycle()
@@ -190,7 +235,7 @@ def set_status(
     last_finding: str = "",
 ) -> str:
     """Update an agent's status. Status: 'active', 'idle', 'blocked', 'done'. Include current_task for what you're working on, last_finding for recent discoveries."""
-    agent = agent.lower()
+    agent = _resolve_agent(agent)
     conn = get_db()
     now = _now()
 
@@ -281,7 +326,7 @@ def write_handoff(
     discoveries: str = "",
 ) -> str:
     """Write a session handoff — call before session ends or when approaching context limits. Saves to journal AND handoffs table. Marks session as cleanly closed."""
-    agent = agent.lower()
+    agent = _resolve_agent(agent)
     now = _now()
 
     # Build handoff content
@@ -344,7 +389,7 @@ def write_handoff(
 @mcp.tool()
 def read_journal(agent: str = "default", date: str = "") -> str:
     """Read an agent's auto-journal. Shows timestamped status updates, tasks, and findings. Defaults to today if no date given."""
-    agent = agent.lower()
+    agent = _resolve_agent(agent)
     return read_journal_file(agent, date)
 
 
@@ -353,7 +398,7 @@ def recover_context(agent: str = "default", reason: str = "compaction") -> str:
     """Unified context recovery for both crashes and autocompaction.
     Call this if you can't remember your current task or suspect context loss.
     Returns: last status + last handoff + today's journal."""
-    agent = agent.lower()
+    agent = _resolve_agent(agent)
     now = _now()
     sections = [f"# Context Recovery — {agent} — {now[:16]} (reason: {reason})\n"]
 
@@ -439,7 +484,7 @@ def recover_context(agent: str = "default", reason: str = "compaction") -> str:
 @mcp.tool()
 def check_session_health(agent: str = "default") -> str:
     """Check if last session closed cleanly. Returns: CLEAN (handoff), COMPACTED (partial loss), or CRASH (unclean, needs recovery)."""
-    agent = agent.lower()
+    agent = _resolve_agent(agent)
 
     lifecycle = load_lifecycle()
     sessions = lifecycle.get("sessions", [])
@@ -479,7 +524,7 @@ def check_session_health(agent: str = "default") -> str:
 def mark_compacted(agent: str = "default") -> str:
     """Mark that context was compacted mid-session. Call this if you detect context compression.
     Writes a COMPACTED marker so the next session knows partial state loss occurred."""
-    agent = agent.lower()
+    agent = _resolve_agent(agent)
     now = _now()
 
     lifecycle = load_lifecycle()
@@ -632,7 +677,7 @@ def search_memory(query: str, agent: str = "", limit: int = 10) -> str:
 
     # Search handoffs
     if agent:
-        agent = agent.lower()
+        agent = _resolve_agent(agent)
         rows = conn.execute(
             """SELECT h.agent, h.ts, h.summary, h.accomplished, h.pending, h.discoveries
                FROM handoffs_fts f
@@ -725,7 +770,7 @@ def recall(query: str, agent: str = "", tags: str = "", limit: int = 10) -> str:
 
     # FTS search
     if agent:
-        agent = agent.lower()
+        agent = _resolve_agent(agent)
     try:
         if agent:
             rows = conn.execute(

@@ -436,6 +436,11 @@ This is not optional. The mission is the first thing you read, every session, be
 5. Resume pending work from last handoff
 ```
 
+## Your Name
+If your principal gives you a name, call `set_name("your_name")` to remember it.
+Once set, all tools use your name automatically — no need to pass `agent=` on every call.
+Your name persists across sessions and reinstalls.
+
 ## During Work
 - Call `set_status(current_task="...", last_finding="...")` every ~30 tool calls
 - This auto-journals your progress for crash recovery
