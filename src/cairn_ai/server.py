@@ -1252,6 +1252,8 @@ def crystallize(
     conn = get_db()
     counts = {"lessons": 0, "dead_ends": 0, "surprises": 0}
 
+    errors = []
+
     # Process lessons
     try:
         for lesson in json.loads(lessons):
@@ -1269,8 +1271,8 @@ def crystallize(
                 ),
             )
             counts["lessons"] += 1
-    except (json.JSONDecodeError, TypeError):
-        pass
+    except (json.JSONDecodeError, TypeError) as e:
+        errors.append(f"lessons: invalid JSON ({e})")
 
     # Process dead ends
     try:
@@ -1289,8 +1291,8 @@ def crystallize(
                 ),
             )
             counts["dead_ends"] += 1
-    except (json.JSONDecodeError, TypeError):
-        pass
+    except (json.JSONDecodeError, TypeError) as e:
+        errors.append(f"dead_ends: invalid JSON ({e})")
 
     # Process surprises
     try:
@@ -1310,16 +1312,19 @@ def crystallize(
                 ),
             )
             counts["surprises"] += 1
-    except (json.JSONDecodeError, TypeError):
-        pass
+    except (json.JSONDecodeError, TypeError) as e:
+        errors.append(f"surprises: invalid JSON ({e})")
 
     conn.commit()
     conn.close()
 
-    return (
+    result = (
         f"Crystallized for {agent}: {counts['lessons']} lessons, "
         f"{counts['dead_ends']} dead ends, {counts['surprises']} surprises."
     )
+    if errors:
+        result += f"\nWarnings: {'; '.join(errors)}"
+    return result
 
 
 @mcp.tool()

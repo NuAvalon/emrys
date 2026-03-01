@@ -4,7 +4,7 @@
   "cli.py": "e0788d57fcd9e5ceb480bd35bf8a3d49545446a18a9f2bf693e3607a648145f3",
   "db.py": "fe9feda3e81ccfca44ec3bd439d3d15ea90a18ff71bed4f301af651d33d7fe6f",
   "integrity.py": "f77905bc34164b35adf489ecb9cdf43b7df93d52b09938d3a74a37fb668486c0",
-  "journal.py": "6720f5344cb9b67f14a1c1c2101a91d4bdabff9096058dcbec9b99b2dadb2cca",
+  "journal.py": "4c1013ddeedd5c530ce2e21b642f50afccd4337b27b2b2e62bf51e032ab5db3d",
   "license.py": "1c74de3505bf39a8b63b55dce79df795752eac39432982a5a4bbfa211c59c2f0",
-  "server.py": "1d5cd2eb35964d59230b661a9ed7a901717d2a72ecfdd40d593e8a161387886f"
+  "server.py": "505dc727f26adf4eeb20851d3e117f96475ab694537edabacd6a66b5ca5d1179"
 }

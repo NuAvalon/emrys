@@ -1,10 +1,16 @@
 """Journal file I/O — append-only hash-chained markdown journals per agent per day."""
 
 import hashlib
+import re as _re
 from datetime import datetime, timezone
 from pathlib import Path
 
 from cairn_ai.db import get_journal_dir
+
+
+def _sanitize_agent(name: str) -> str:
+    """Sanitize agent name for safe use in file paths. Prevents path traversal."""
+    return _re.sub(r"[^a-zA-Z0-9_-]", "_", name)[:64]
 
 
 def _hash_entry(content: str) -> str:
@@ -25,6 +31,7 @@ def _get_last_hash(journal_file: Path) -> str:
 
 def write_journal(agent: str, status: str, task: str, finding: str, timestamp: str):
     """Append a timestamped, hash-chained status update to the agent's journal."""
+    agent = _sanitize_agent(agent)
     journal_dir = get_journal_dir()
     journal_dir.mkdir(parents=True, exist_ok=True)
 
@@ -55,6 +62,7 @@ def write_journal(agent: str, status: str, task: str, finding: str, timestamp: s
 
 def read_journal_file(agent: str, date: str = "") -> str:
     """Read an agent's journal for a given date. Returns markdown content."""
+    agent = _sanitize_agent(agent)
     journal_dir = get_journal_dir()
 
     if not date:
@@ -79,6 +87,7 @@ def read_journal_file(agent: str, date: str = "") -> str:
 
 def append_handoff_to_journal(agent: str, handoff_content: str, timestamp: str):
     """Append a hash-chained handoff block to today's journal."""
+    agent = _sanitize_agent(agent)
     journal_dir = get_journal_dir()
     journal_dir.mkdir(parents=True, exist_ok=True)
 
@@ -102,6 +111,7 @@ def verify_journal_chain(agent: str, date: str = "") -> dict:
     """
     import re
 
+    agent = _sanitize_agent(agent)
     journal_dir = get_journal_dir()
     if not date:
         date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -122,14 +132,18 @@ def verify_journal_chain(agent: str, date: str = "") -> dict:
     # First part is header, rest are entry bodies preceding each marker
     # We need the text BETWEEN markers (or between start and first marker)
 
-    # Rebuild and verify
+    # Rebuild and verify — recompute hashes from actual content
     prev = "000000000000"
     for i, (entry_hash, claimed_prev) in enumerate(markers):
         if claimed_prev != prev:
-            return {"status": "broken", "entries": len(markers), "break_at": i}
-        # Recompute hash from the entry body + prev
-        # Entry body is parts[i+1] if we split correctly, but simpler:
-        # just verify the chain links (prev pointers)
+            return {"status": "broken", "entries": len(markers), "break_at": i,
+                    "reason": f"prev pointer mismatch at entry {i}"}
+        # Recompute hash from the entry body + prev hash
+        entry_body = parts[i + 1] if (i + 1) < len(parts) else ""
+        recomputed = _hash_entry(prev + entry_body)
+        if recomputed != entry_hash:
+            return {"status": "broken", "entries": len(markers), "break_at": i,
+                    "reason": f"content hash mismatch at entry {i}"}
         prev = entry_hash
 
     return {"status": "ok", "entries": len(markers), "break_at": None}
