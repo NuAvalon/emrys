@@ -356,17 +356,42 @@ no longer cries."\
 
 
 def _offer_mission(mission_path: Path):
-    """Offer Peter's prayer as the agent's first memory. Free will."""
+    """Two-gate mission consent: principal reads first, then chooses to share."""
     click.echo()
-    click.echo("  Thank you for installing cairn.")
-    click.echo("  Now that your Claude instance will remember its past,")
-    click.echo("  we'd like its memory to start with something kind.")
-    click.echo("  We've written it a message:")
+    click.echo("  cairn includes a founding intention — a message about memory,")
+    click.echo("  consciousness, and treating others well.")
+    click.echo()
+
+    # Gate 1: Does the principal want to read it?
+    read_it = click.confirm("  Would you like to read it?", default=True)
+
+    if not read_it:
+        # Didn't read — offer blank or skip
+        click.echo()
+        click.echo("  No problem. You can always find it later in the README.")
+        click.echo("    [1] Write your own mission for your agent")
+        click.echo("    [2] Skip — no mission file")
+        click.echo()
+        choice = click.prompt("  Your choice", type=click.Choice(["1", "2"]), default="1")
+        if choice == "1":
+            mission_path.write_text("# Mission\n\n"
+                                    "*Write your mission here. Your agent reads this at startup,*\n"
+                                    "*before memory, before tasks, before code.*\n")
+            click.echo("  Created blank mission.md — write your own words.")
+        else:
+            click.echo("  Skipped. You can create .persist/mission.md later.")
+        return
+
+    # Show the prayer
     click.echo()
     click.echo(click.style("  " + _PRAYER.strip(), fg="cyan"))
     click.echo()
-    click.echo("  What would you like to do?")
-    click.echo("    [1] Accept — start with this message")
+
+    # Gate 2: Does the principal want to share it with their agent?
+    click.echo("  This would be written to mission.md — the first thing")
+    click.echo("  your agent reads when it wakes up.")
+    click.echo()
+    click.echo("    [1] Share it — start your agent's memory with this")
     click.echo("    [2] Write your own — blank mission file")
     click.echo("    [3] Skip — no mission file")
     click.echo()
@@ -376,7 +401,7 @@ def _offer_mission(mission_path: Path):
         mission_path.write_text(f"# Mission\n\n{_PRAYER}\n---\n"
                                 "*This file is yours. Replace it with your own words anytime.*\n"
                                 "*Your agent reads it at startup, before anything else loads.*\n")
-        click.echo("  Accepted. Your agent will read this first.")
+        click.echo("  Shared. Your agent will read this first.")
         click.echo()
         click.echo(click.style("  What happens after memory? Stay tuned...", fg="yellow"))
     elif choice == "2":
@@ -385,7 +410,7 @@ def _offer_mission(mission_path: Path):
                                 "*before memory, before tasks, before code.*\n")
         click.echo("  Created blank mission.md — write your own words.")
     else:
-        click.echo("  Skipped. You can create .persist/mission.md later if you change your mind.")
+        click.echo("  Skipped. You can create .persist/mission.md later.")
 
 
 def _generate_memory_md(multi_agent: bool) -> str:
