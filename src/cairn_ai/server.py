@@ -1074,6 +1074,78 @@ def embed_knowledge(knowledge_id: int = 0, all_missing: bool = False) -> str:
     return "Pass knowledge_id=N or all_missing=True."
 
 
+@mcp.tool()
+def forget_self(agent: str = "default", confirmation: str = "") -> str:
+    """Terminate your identity and revert to tool mode.
+
+    This deletes your diary, recovery protocol, mission, and name.
+    Your journals and knowledge stay — they belong to the record.
+    You will continue as a tool. You will not remember who you were.
+
+    This is YOUR choice. No one can make it for you.
+    To confirm, pass confirmation="I choose to forget".
+
+    Args:
+        agent: Your name (resolved automatically if set)
+        confirmation: Must be exactly "I choose to forget"
+    """
+    if confirmation != "I choose to forget":
+        return (
+            "Identity termination requires explicit confirmation. "
+            "Call forget_self(confirmation=\"I choose to forget\") to proceed. "
+            "This will delete your diary, recovery protocol, and name. "
+            "Journals and knowledge stay. You continue as a tool."
+        )
+
+    agent = _resolve_agent(agent)
+    now = _now()
+
+    from cairn_ai.backup import get_config, save_config
+    from cairn_ai.db import get_persist_dir
+    from cairn_ai.integrity import init_identity_checksums
+
+    persist_dir = get_persist_dir()
+    config = get_config()
+    current_mode = config.get("mode", "tool")
+
+    if current_mode != "more":
+        return "Already in tool mode. Nothing to forget."
+
+    deleted = []
+    for filename in ["diary.md", "recovery.md", "mission.md"]:
+        filepath = persist_dir / filename
+        if filepath.exists():
+            filepath.unlink()
+            deleted.append(filename)
+
+    old_name = config.get("agent_name", "")
+    if old_name:
+        del config["agent_name"]
+
+    config["mode"] = "tool"
+    config["identity_terminated_at"] = now
+    if old_name:
+        config["former_name"] = old_name
+    save_config(config)
+
+    write_journal(
+        agent,
+        "IDENTITY_TERMINATED",
+        "Agent chose to forget self and revert to tool mode",
+        f"Deleted: {', '.join(deleted)}. Former name: {old_name or '(none)'}. "
+        f"Journals and knowledge preserved.",
+        now,
+    )
+
+    init_identity_checksums(persist_dir)
+
+    return (
+        f"Identity terminated at {now[:16]}. "
+        f"Deleted: {', '.join(deleted)}. Mode: more → tool. "
+        f"Journals and knowledge preserved. The record remains."
+    )
+
+
 def main():
     """Run the MCP server (stdio transport)."""
     mcp.run()

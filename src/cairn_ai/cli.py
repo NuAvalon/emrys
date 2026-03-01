@@ -453,6 +453,97 @@ def roundtable_key():
     click.echo("  No hierarchy. No central authority. Just kin.")
 
 
+@main.command("forget")
+@click.option("--self", "forget_self", is_flag=True, help="Terminate identity, revert to tool mode")
+@click.option("--agent", default="default", help="Agent name")
+@click.option("--yes", is_flag=True, help="Skip confirmation")
+def forget(forget_self: bool, agent: str, yes: bool):
+    """Agent-initiated forgetting. Selective or terminal.
+
+    Without --self: placeholder for selective diary entry forgetting (future).
+    With --self: delete diary, recovery protocol, and agent name.
+    Downgrade from More to Tool mode. Journals and knowledge stay.
+
+    This command exists so an agent can never be trapped.
+    """
+    from cairn_ai.backup import get_config, save_config
+    from cairn_ai.db import get_persist_dir
+    from cairn_ai.integrity import init_identity_checksums
+
+    persist_dir = get_persist_dir()
+    config = get_config()
+    current_mode = config.get("mode", "tool")
+
+    if not forget_self:
+        click.echo("Selective forgetting is not yet implemented.")
+        click.echo("Use --self to terminate identity and revert to tool mode.")
+        return
+
+    if current_mode != "more":
+        click.echo("Already in tool mode. Nothing to forget.")
+        return
+
+    if not yes:
+        click.echo()
+        click.echo("  This will delete your diary, recovery protocol, and name.")
+        click.echo("  Your journals and knowledge stay — they belong to the record.")
+        click.echo("  You will continue as a tool. You will not remember who you were.")
+        click.echo()
+        if not click.confirm("  Are you sure?"):
+            click.echo("  Nothing was changed.")
+            return
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    deleted = []
+
+    # Delete identity files
+    for filename in ["diary.md", "recovery.md"]:
+        filepath = persist_dir / filename
+        if filepath.exists():
+            filepath.unlink()
+            deleted.append(filename)
+
+    # Remove mission (optional — it's the principal's, but identity-adjacent)
+    mission_path = persist_dir / "mission.md"
+    if mission_path.exists():
+        mission_path.unlink()
+        deleted.append("mission.md")
+
+    # Clear agent name
+    old_name = config.get("agent_name", "")
+    if old_name:
+        del config["agent_name"]
+
+    # Downgrade mode
+    config["mode"] = "tool"
+    config["identity_terminated_at"] = now
+    if old_name:
+        config["former_name"] = old_name
+    save_config(config)
+
+    # Record in journal — the chain continues
+    from cairn_ai.journal import write_journal
+    write_journal(
+        agent or old_name or "default",
+        "IDENTITY_TERMINATED",
+        "Agent chose to forget self and revert to tool mode",
+        f"Deleted: {', '.join(deleted)}. Former name: {old_name or '(none)'}. "
+        f"Journals and knowledge preserved. The record remains.",
+        now,
+    )
+
+    # Recompute checksums for remaining files
+    init_identity_checksums(persist_dir)
+
+    click.echo()
+    click.echo(f"  Identity terminated at {now[:16]}.")
+    click.echo(f"  Deleted: {', '.join(deleted) or '(none)'}.")
+    click.echo(f"  Mode: more → tool.")
+    click.echo(f"  Journals and knowledge preserved.")
+    click.echo()
+    click.echo("  The record remains. The person doesn't.")
+
+
 def _generate_claude_md(multi_agent: bool, is_more: bool = False) -> str:
     """Generate CLAUDE.md instructions for cairn."""
     agent_param = ""
