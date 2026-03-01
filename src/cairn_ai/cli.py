@@ -449,6 +449,8 @@ every session.*
 
 def _configure_mcp_settings(persist_path: Path):
     """Add persist MCP server to Claude Code project settings."""
+    import shutil
+
     # Try project-level settings first
     settings_dir = Path(".claude")
     settings_dir.mkdir(exist_ok=True)
@@ -464,13 +466,15 @@ def _configure_mcp_settings(persist_path: Path):
     mcp_servers = settings.get("mcpServers", {})
 
     if "cairn" not in mcp_servers:
+        # Use full path to cairn executable — venvs won't be on Claude's PATH
+        cairn_path = shutil.which("cairn") or "cairn"
         mcp_servers["cairn"] = {
-            "command": "cairn",
+            "command": cairn_path,
             "args": ["serve"],
         }
         settings["mcpServers"] = mcp_servers
         settings_file.write_text(json.dumps(settings, indent=2))
-        click.echo("  Added MCP server config to .claude/settings.json")
+        click.echo(f"  Added MCP server config to .claude/settings.json ({cairn_path})")
     else:
         click.echo("  MCP server already configured (skipped)")
 
