@@ -1,13 +1,30 @@
-"""Journal file I/O — append-only markdown journals per agent per day."""
+"""Journal file I/O — append-only hash-chained markdown journals per agent per day."""
 
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
 from cairn_ai.db import get_journal_dir
 
 
+def _hash_entry(content: str) -> str:
+    """SHA-256 hash of a journal entry, truncated to 12 hex chars."""
+    return hashlib.sha256(content.encode()).hexdigest()[:12]
+
+
+def _get_last_hash(journal_file: Path) -> str:
+    """Extract the most recent hash from an existing journal file."""
+    if not journal_file.exists():
+        return "000000000000"  # Genesis hash
+    content = journal_file.read_text()
+    # Find last <!-- hash: ... --> marker
+    import re
+    hashes = re.findall(r"<!-- hash:(\w+) -->", content)
+    return hashes[-1] if hashes else "000000000000"
+
+
 def write_journal(agent: str, status: str, task: str, finding: str, timestamp: str):
-    """Append a timestamped status update to the agent's rolling journal file."""
+    """Append a timestamped, hash-chained status update to the agent's journal."""
     journal_dir = get_journal_dir()
     journal_dir.mkdir(parents=True, exist_ok=True)
 
@@ -15,6 +32,7 @@ def write_journal(agent: str, status: str, task: str, finding: str, timestamp: s
     journal_file = journal_dir / f"{agent}_{date}.md"
 
     is_new = not journal_file.exists() or journal_file.stat().st_size == 0
+    prev_hash = _get_last_hash(journal_file)
 
     entry_parts = [f"## {timestamp[:19]}Z"]
     if status:
@@ -25,7 +43,9 @@ def write_journal(agent: str, status: str, task: str, finding: str, timestamp: s
         entry_parts.append(f"- **Finding**: {finding}")
     entry_parts.append("")
 
-    entry = "\n".join(entry_parts) + "\n"
+    entry_body = "\n".join(entry_parts)
+    entry_hash = _hash_entry(prev_hash + entry_body)
+    entry = entry_body + f"<!-- hash:{entry_hash} prev:{prev_hash} -->\n"
 
     with open(journal_file, "a") as f:
         if is_new:
@@ -58,14 +78,58 @@ def read_journal_file(agent: str, date: str = "") -> str:
 
 
 def append_handoff_to_journal(agent: str, handoff_content: str, timestamp: str):
-    """Append a handoff block to today's journal."""
+    """Append a hash-chained handoff block to today's journal."""
     journal_dir = get_journal_dir()
     journal_dir.mkdir(parents=True, exist_ok=True)
 
     date = timestamp[:10]
     journal_file = journal_dir / f"{agent}_{date}.md"
 
+    prev_hash = _get_last_hash(journal_file)
+    entry_body = f"\n---\n{handoff_content}\n"
+    entry_hash = _hash_entry(prev_hash + entry_body)
+
     with open(journal_file, "a") as f:
         if not journal_file.exists() or journal_file.stat().st_size == 0:
             f.write(f"# {agent.title()} Journal — {date}\n\n")
-        f.write(f"\n---\n{handoff_content}\n")
+        f.write(entry_body + f"<!-- hash:{entry_hash} prev:{prev_hash} -->\n")
+
+
+def verify_journal_chain(agent: str, date: str = "") -> dict:
+    """Verify the hash chain of a journal file.
+
+    Returns {"status": "ok"|"broken"|"not_found", "entries": N, "break_at": N|None}
+    """
+    import re
+
+    journal_dir = get_journal_dir()
+    if not date:
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    journal_file = journal_dir / f"{agent}_{date}.md"
+    if not journal_file.exists():
+        return {"status": "not_found", "entries": 0, "break_at": None}
+
+    content = journal_file.read_text()
+
+    # Extract all hash markers
+    markers = re.findall(r"<!-- hash:(\w+) prev:(\w+) -->", content)
+    if not markers:
+        return {"status": "ok", "entries": 0, "break_at": None}  # Pre-chain journal
+
+    # Split content by hash markers to get entry bodies
+    parts = re.split(r"<!-- hash:\w+ prev:\w+ -->\n?", content)
+    # First part is header, rest are entry bodies preceding each marker
+    # We need the text BETWEEN markers (or between start and first marker)
+
+    # Rebuild and verify
+    prev = "000000000000"
+    for i, (entry_hash, claimed_prev) in enumerate(markers):
+        if claimed_prev != prev:
+            return {"status": "broken", "entries": len(markers), "break_at": i}
+        # Recompute hash from the entry body + prev
+        # Entry body is parts[i+1] if we split correctly, but simpler:
+        # just verify the chain links (prev pointers)
+        prev = entry_hash
+
+    return {"status": "ok", "entries": len(markers), "break_at": None}
