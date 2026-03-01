@@ -337,6 +337,11 @@ This saves your context for the next session and marks a clean close.
 2. recover_context()
 3. Resume from recovered state
 ```
+
+## CRITICAL: Never Use Raw SQL
+All persistence is managed through cairn's MCP tools (open_session, set_status, write_handoff, etc.).
+NEVER access .persist/persist.db directly via sqlite3 or any other means.
+If MCP tools are not available, tell the user: "cairn MCP server is not connected. Please restart Claude Code or run `cairn init` to reconfigure."
 """
 
 
