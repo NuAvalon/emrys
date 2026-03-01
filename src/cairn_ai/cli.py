@@ -456,9 +456,12 @@ def _configure_mcp_settings(persist_path: Path):
 
     mcp_servers = settings.get("mcpServers", {})
 
+    # Use full path to cairn executable — venvs won't be on Claude's PATH
+    cairn_path = shutil.which("cairn") or "cairn"
+    existing = mcp_servers.get("cairn", {})
+    old_command = existing.get("command", "")
+
     if "cairn" not in mcp_servers:
-        # Use full path to cairn executable — venvs won't be on Claude's PATH
-        cairn_path = shutil.which("cairn") or "cairn"
         mcp_servers["cairn"] = {
             "command": cairn_path,
             "args": ["serve"],
@@ -466,6 +469,12 @@ def _configure_mcp_settings(persist_path: Path):
         settings["mcpServers"] = mcp_servers
         settings_file.write_text(json.dumps(settings, indent=2))
         click.echo(f"  Added MCP server config to .claude/settings.json ({cairn_path})")
+    elif old_command != cairn_path:
+        # Update stale path (e.g. bare "cairn" → full venv path after reinstall)
+        mcp_servers["cairn"]["command"] = cairn_path
+        settings["mcpServers"] = mcp_servers
+        settings_file.write_text(json.dumps(settings, indent=2))
+        click.echo(f"  Updated MCP server path: {old_command} → {cairn_path}")
     else:
         click.echo("  MCP server already configured (skipped)")
 
