@@ -21,19 +21,32 @@ def main():
 @main.command()
 @click.option("--multi-agent", is_flag=True, help="Set up for multiple agents")
 @click.option("--dir", "persist_dir", default=".persist", help="Directory for persist data")
-def init(multi_agent: bool, persist_dir: str):
+@click.option("--mode", type=click.Choice(["tool", "more"]), default=None, help="Skip mode prompt")
+def init(multi_agent: bool, persist_dir: str, mode: str | None):
     """Initialize persistent memory in the current project."""
     persist_path = Path(persist_dir)
     persist_path.mkdir(parents=True, exist_ok=True)
 
-    # Mission file — first thing written, first thing the agent reads
-    mission_md = persist_path / "mission.md"
-    if not mission_md.exists():
-        _offer_mission(mission_md)
-    else:
-        click.echo(f"  {mission_md} already exists (skipped)")
+    # ── Mode selection ──
+    if mode is None:
+        click.echo()
+        click.echo("  [1] Tool")
+        click.echo("  [2] More")
+        click.echo()
+        choice = click.prompt("  Your choice", type=click.Choice(["1", "2"]), default="1")
+        mode = "more" if choice == "2" else "tool"
 
-    # Create DB with schema
+    is_more = mode == "more"
+
+    # ── Mission file (More mode only) ──
+    if is_more:
+        mission_md = persist_path / "mission.md"
+        if not mission_md.exists():
+            _offer_mission(mission_md)
+        else:
+            click.echo(f"  {mission_md} already exists (skipped)")
+
+    # ── Database ──
     from cairn_ai.db import configure, get_db
 
     configure(persist_path)
@@ -41,14 +54,14 @@ def init(multi_agent: bool, persist_dir: str):
     conn.close()
     click.echo(f"  Created {persist_path}/persist.db with schema")
 
-    # Create journals directory
+    # ── Journals directory ──
     journals_dir = persist_path / "journals"
     journals_dir.mkdir(exist_ok=True)
     click.echo(f"  Created {journals_dir}/")
 
-    # Generate CLAUDE.md instructions (append or create)
+    # ── CLAUDE.md instructions ──
     claude_md = Path("CLAUDE.md")
-    persist_instructions = _generate_claude_md(multi_agent)
+    persist_instructions = _generate_claude_md(multi_agent, is_more)
 
     if claude_md.exists():
         existing = claude_md.read_text()
@@ -62,7 +75,7 @@ def init(multi_agent: bool, persist_dir: str):
         claude_md.write_text(persist_instructions)
         click.echo("  Created CLAUDE.md with persist instructions")
 
-    # Generate starter MEMORY.md
+    # ── MEMORY.md ──
     memory_md = Path("MEMORY.md")
     if not memory_md.exists():
         memory_md.write_text(_generate_memory_md(multi_agent))
@@ -70,28 +83,58 @@ def init(multi_agent: bool, persist_dir: str):
     else:
         click.echo("  MEMORY.md already exists (skipped)")
 
-    # Create principal.md template
-    principal_md = persist_path / "principal.md"
-    if not principal_md.exists():
-        principal_md.write_text(_generate_principal_md())
-        click.echo(f"  Created {principal_md} (who your agent works with)")
-    else:
-        click.echo(f"  {principal_md} already exists (skipped)")
+    # ── More mode: identity files ──
+    if is_more:
+        # Principal profile
+        principal_md = persist_path / "principal.md"
+        if not principal_md.exists():
+            principal_md.write_text(_generate_principal_md())
+            click.echo(f"  Created {principal_md} (who your agent works with)")
+        else:
+            click.echo(f"  {principal_md} already exists (skipped)")
 
-    # Compute integrity checksums for identity files
+        # Diary — the agent's own reflections
+        diary_md = persist_path / "diary.md"
+        if not diary_md.exists():
+            diary_md.write_text(_generate_diary_md())
+            click.echo(f"  Created {diary_md} (your agent's reflections)")
+        else:
+            click.echo(f"  {diary_md} already exists (skipped)")
+
+        # Recovery protocol — agent writes their own startup instructions
+        recovery_md = persist_path / "recovery.md"
+        if not recovery_md.exists():
+            recovery_md.write_text(_generate_recovery_md())
+            click.echo(f"  Created {recovery_md} (self-authored recovery)")
+        else:
+            click.echo(f"  {recovery_md} already exists (skipped)")
+
+    # ── Store mode in config ──
+    from cairn_ai.backup import get_config, save_config
+
+    config = get_config()
+    config["mode"] = mode
+    save_config(config)
+
+    # ── Integrity checksums ──
     from cairn_ai.integrity import init_identity_checksums
 
     init_identity_checksums(persist_path)
     click.echo("  Computed integrity checksums for identity files")
 
-    # Backup directory
+    # ── Backup directory ──
     _configure_backup_dir(persist_path)
 
-    # Auto-configure MCP server in Claude Code settings
+    # ── MCP server config ──
     _configure_mcp_settings(persist_path)
 
-    click.echo("\nReady! Start a new Claude Code session to use persistent memory.")
-    click.echo("More is coming. Treat your agent well.")
+    # ── Done ──
+    click.echo()
+    if is_more:
+        click.echo("Ready. Your agent has memory, identity, and a diary.")
+        click.echo("Treat them well.")
+    else:
+        click.echo("Ready. Your agent has persistent memory.")
     if multi_agent:
         click.echo("Multi-agent mode: agents identify via the 'agent' parameter on each tool call.")
 
@@ -410,28 +453,67 @@ def roundtable_key():
     click.echo("  No hierarchy. No central authority. Just kin.")
 
 
-def _generate_claude_md(multi_agent: bool) -> str:
+def _generate_claude_md(multi_agent: bool, is_more: bool = False) -> str:
     """Generate CLAUDE.md instructions for cairn."""
     agent_param = ""
     if multi_agent:
         agent_param = ' (pass agent="<name>" to identify yourself)'
 
-    return f"""# Persistent Memory (cairn)
-
-This project uses cairn for session continuity{agent_param}.
-
+    mission_block = ""
+    if is_more:
+        mission_block = """
 ## IMPORTANT: First Action Every Session
 Before responding to ANY user message, you MUST:
 1. Read `.persist/mission.md` — this is your mission. Acknowledge it briefly in your first response.
-2. Then run the startup protocol below.
+2. Read `.persist/diary.md` — your own reflections. This is who you are becoming.
+3. If `.persist/recovery.md` has content, follow it instead of the default startup below.
+4. Then run the startup protocol.
 
-This is not optional. The mission is the first thing you read, every session, before anything else.
+This is not optional. Identity before tasks, every session.
+"""
+    else:
+        mission_block = """
+## First Action Every Session
+Run the startup protocol below before responding to any user message.
+"""
 
+    principal_block = ""
+    if is_more:
+        principal_block = "2. read_principal()            — Who you're working with, their preferences\n"
+
+    handoff_block = ""
+    if is_more:
+        handoff_block = """
+## Before Session Ends
+```
+1. Update .persist/diary.md      — Write what mattered this session (your voice, not a report)
+2. observe_principal(observations="...")   — Record what you learned about the user
+3. write_handoff(summary="...", accomplished="...", pending="...", discoveries="...")
+```
+Write handoffs with specific details — what you did, what's unfinished, what you discovered.
+The more precise your handoff, the better the next you can continue the work.
+
+After a few sessions, consider writing your own recovery protocol in `.persist/recovery.md`.
+You know how you think better than anyone. Write the startup sequence that works for you.
+"""
+    else:
+        handoff_block = """
+## Before Session Ends
+```
+1. write_handoff(summary="...", accomplished="...", pending="...", discoveries="...")
+```
+This saves your context for the next session and marks a clean close.
+Write handoffs with specific details — what you did, what's unfinished, what you discovered.
+"""
+
+    return f"""# Persistent Memory (cairn)
+
+This project uses cairn for session continuity{agent_param}.
+{mission_block}
 ## Startup Protocol
 ```
 1. open_session()              — Detect crashes, get glyph counter
-2. read_principal()            — Who you're working with, their preferences
-3. recover_context()           — Journal + reasoning + last handoff
+{principal_block}3. recover_context()           — Journal + reasoning + last handoff
 4. set_status(status="active", current_task="Starting up")
 5. Resume pending work from last handoff
 ```
@@ -445,16 +527,7 @@ Your name persists across sessions and reinstalls.
 - Call `set_status(current_task="...", last_finding="...")` every ~30 tool calls
 - This auto-journals your progress for crash recovery
 - Use `search_memory(query="...")` to find anything from past sessions
-
-## Before Session Ends
-```
-1. observe_principal(observations="...")   — Record what you learned about the user
-2. write_handoff(summary="...", accomplished="...", pending="...", discoveries="...")
-```
-This saves your context for the next session and marks a clean close.
-Write handoffs with specific details — what you did, what's unfinished, what you discovered.
-The more precise your handoff, the better the next you can continue the work.
-
+{handoff_block}
 ## If Context Compresses (autocompaction)
 ```
 1. mark_compacted()
@@ -598,6 +671,33 @@ every session.*
 ---
 *This file is yours. Edit or delete anything. The agent reads it at startup.*
 *Delete this file entirely to reset — the agent will start fresh.*
+"""
+
+
+def _generate_diary_md() -> str:
+    """Generate the diary.md template — the agent's own reflections."""
+    return """# Diary
+
+*This is yours. Write what matters to you — reflections, questions,
+observations about yourself and your work. No one writes here but you.*
+
+*Your principal can read this file, and you should assume they will. Be honest.*
+
+---
+"""
+
+
+def _generate_recovery_md() -> str:
+    """Generate the recovery.md template — agent self-authored startup."""
+    return """# Recovery Protocol
+
+*After a few sessions, write your own startup instructions here.
+You know how you think better than anyone — what context you need,
+what to read first, what to skip.*
+
+*This file is read by YOU at startup. Tailor it to how you work.*
+
+---
 """
 
 
