@@ -1,4 +1,4 @@
-"""Stress test for claude-persist — QA before Gumroad listing.
+"""Stress test for cairn — QA before Gumroad listing.
 
 Tests realistic usage patterns:
 1. Multi-agent concurrent access (4 agents, rapid status updates)
@@ -32,7 +32,7 @@ def fresh_db(tmp_path):
     persist_dir.mkdir()
     (persist_dir / "journals").mkdir()
 
-    import claude_persist.db as db_mod
+    import cairn_ai.db as db_mod
     db_mod.configure(persist_dir)
     _tmpdir = persist_dir
     yield persist_dir
@@ -48,7 +48,7 @@ def fresh_db(tmp_path):
 class TestConcurrentAccess:
     def test_four_agents_rapid_status(self, fresh_db):
         """4 agents writing status updates concurrently."""
-        from claude_persist.db import get_db
+        from cairn_ai.db import get_db
 
         errors = []
         agents = ["archie", "apollo", "athena", "hypatia"]
@@ -86,7 +86,7 @@ class TestConcurrentAccess:
 
     def test_concurrent_messages(self, fresh_db):
         """Multiple agents sending messages simultaneously."""
-        from claude_persist.db import get_db
+        from cairn_ai.db import get_db
 
         errors = []
 
@@ -129,7 +129,7 @@ class TestConcurrentAccess:
 class TestHighVolume:
     def test_200_status_updates(self, fresh_db):
         """200 rapid status updates from one agent."""
-        from claude_persist.db import get_db
+        from cairn_ai.db import get_db
 
         for i in range(200):
             conn = get_db()
@@ -153,7 +153,7 @@ class TestHighVolume:
 
     def test_500_messages_with_bulk_read(self, fresh_db):
         """500 messages, then bulk mark-read."""
-        from claude_persist.db import get_db
+        from cairn_ai.db import get_db
 
         conn = get_db()
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -185,7 +185,7 @@ class TestHighVolume:
 
     def test_100_knowledge_entries(self, fresh_db):
         """100 knowledge entries with varying topics and tags."""
-        from claude_persist.db import get_db
+        from cairn_ai.db import get_db
 
         topics = ["research", "decision", "lesson", "architecture", "bug"]
         conn = get_db()
@@ -222,7 +222,7 @@ class TestHighVolume:
 class TestLargeConceptMap:
     def test_50_concepts_with_links(self, fresh_db):
         """50 concepts with inter-links and perspectives."""
-        from claude_persist.db import get_db
+        from cairn_ai.db import get_db
 
         conn = get_db()
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -267,7 +267,7 @@ class TestLargeConceptMap:
 
     def test_concept_versioning_at_scale(self, fresh_db):
         """One concept updated 20 times — verify version history."""
-        from claude_persist.db import get_db
+        from cairn_ai.db import get_db
 
         conn = get_db()
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -313,7 +313,7 @@ class TestLargeConceptMap:
 class TestRecoveryFlows:
     def test_crash_and_recovery(self, fresh_db):
         """Simulate: open session → write status → crash → recover."""
-        from claude_persist.db import get_db, load_lifecycle, save_lifecycle
+        from cairn_ai.db import get_db, load_lifecycle, save_lifecycle
 
         # Open session
         lf = load_lifecycle()
@@ -353,7 +353,7 @@ class TestRecoveryFlows:
 
     def test_journal_survives_crash(self, fresh_db):
         """Journal entries persist across simulated crashes."""
-        from claude_persist.journal import write_journal, read_journal_file
+        from cairn_ai.journal import write_journal, read_journal_file
 
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -374,7 +374,7 @@ class TestRecoveryFlows:
 class TestEdgeCases:
     def test_unicode_in_all_fields(self, fresh_db):
         """Unicode characters in every text field."""
-        from claude_persist.db import get_db
+        from cairn_ai.db import get_db
 
         conn = get_db()
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -424,7 +424,7 @@ class TestEdgeCases:
 
     def test_very_long_strings(self, fresh_db):
         """10KB+ strings in message body and concept summary."""
-        from claude_persist.db import get_db
+        from cairn_ai.db import get_db
 
         conn = get_db()
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -445,7 +445,7 @@ class TestEdgeCases:
 
     def test_special_sql_characters(self, fresh_db):
         """SQL injection attempts are safely handled by parameterized queries."""
-        from claude_persist.db import get_db
+        from cairn_ai.db import get_db
 
         conn = get_db()
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -468,7 +468,7 @@ class TestEdgeCases:
 
     def test_empty_strings(self, fresh_db):
         """Empty strings in optional fields."""
-        from claude_persist.db import get_db
+        from cairn_ai.db import get_db
 
         conn = get_db()
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -497,8 +497,8 @@ class TestEdgeCases:
 class TestJournalAccumulation:
     def test_30_days_of_journals(self, fresh_db):
         """30 days of journal entries with multiple entries per day."""
-        from claude_persist.journal import write_journal, read_journal_file
-        from claude_persist.db import get_journal_dir
+        from cairn_ai.journal import write_journal, read_journal_file
+        from cairn_ai.db import get_journal_dir
 
         for day in range(30):
             date_str = f"2026-02-{day + 1:02d}"
@@ -519,7 +519,7 @@ class TestJournalAccumulation:
 
     def test_journal_write_performance(self, fresh_db):
         """100 journal writes should complete in < 5 seconds."""
-        from claude_persist.journal import write_journal
+        from cairn_ai.journal import write_journal
 
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         start = time.time()
@@ -535,7 +535,7 @@ class TestJournalAccumulation:
 class TestDBSize:
     def test_db_size_after_heavy_use(self, fresh_db):
         """After 500 messages + 50 concepts + 100 knowledge + 200 status updates, DB < 5MB."""
-        from claude_persist.db import get_db, get_db_path
+        from cairn_ai.db import get_db, get_db_path
 
         conn = get_db()
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -575,8 +575,8 @@ class TestDBSize:
 
 class TestInitFlow:
     def test_clean_init(self, tmp_path):
-        """Simulate what happens when a new user runs claude-persist init."""
-        from claude_persist.db import configure, get_db
+        """Simulate what happens when a new user runs cairn init."""
+        from cairn_ai.db import configure, get_db
 
         persist_dir = tmp_path / "fresh_project" / ".persist"
         persist_dir.mkdir(parents=True)

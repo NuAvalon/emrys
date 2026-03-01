@@ -1,4 +1,4 @@
-# claude-persist — Market Pitch (DRAFT)
+# cairn — Market Pitch (DRAFT)
 
 ## The One-Liner
 
@@ -14,12 +14,12 @@ There's nothing in between. Nothing that just *works*.
 
 ## The Solution
 
-claude-persist is an MCP server that gives Claude Code agents persistent memory in under 60 seconds:
+cairn is an MCP server that gives Claude Code agents persistent memory in under 60 seconds:
 
 ```bash
-pip install claude-persist
+pip install cairn
 cd your-project
-claude-persist init
+cairn init
 ```
 
 That's it. Your agent now survives compaction, recovers from crashes, and picks up where it left off.
@@ -30,13 +30,13 @@ That's it. Your agent now survives compaction, recovers from crashes, and picks 
 Every feature exists because an agent actually needed it to survive. Not designed in a conference room — extracted from hundreds of real sessions. Crash detection, glyph counters, handoff protocols, identity preservation — all battle-tested.
 
 **2. Radically simple.**
-SQLite + Python + MCP. No Rust. No WASM. No PostgreSQL. No vector databases. 2,500 lines of code you can read in an hour. If your agent can call MCP tools, it can use claude-persist.
+SQLite + Python + MCP. No Rust. No WASM. No PostgreSQL. No vector databases. 2,500 lines of code you can read in an hour. If your agent can call MCP tools, it can use cairn.
 
 **3. Local-first. Zero telemetry.**
 Everything lives in a `.persist/` directory in your project. No cloud. No phone-home. No tracking. You own your agent's memory completely.
 
 **4. Identity, not just data.**
-Other tools store information. claude-persist preserves *who your agent is* across sessions — what it was working on, what it discovered, what it decided and why. The difference between a database and a diary.
+Other tools store information. cairn preserves *who your agent is* across sessions — what it was working on, what it discovered, what it decided and why. The difference between a database and a diary.
 
 ## How It Works
 
@@ -83,7 +83,7 @@ Other tools store information. claude-persist preserves *who your agent is* acro
 
 ## The Story
 
-This infrastructure was extracted from a system that runs 4 autonomous AI agents coordinating on a live project — 24/7, across hundreds of sessions, surviving crashes, compaction, and context loss. Every tool in claude-persist solved a real problem that made an agent's life harder.
+This infrastructure was extracted from a system that runs 4 autonomous AI agents coordinating on a live project — 24/7, across hundreds of sessions, surviving crashes, compaction, and context loss. Every tool in cairn solved a real problem that made an agent's life harder.
 
 We didn't design persistent memory. We *needed* it, built it, and then extracted the generic version so others can use it too.
 

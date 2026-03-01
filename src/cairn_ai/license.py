@@ -3,12 +3,12 @@
 import hashlib
 from pathlib import Path
 
-from claude_persist.db import get_persist_dir
+from cairn_ai.db import get_persist_dir
 
 _UPGRADE_MSG = (
-    "This feature requires claude-persist Pro. "
-    "Visit https://nuavalon.dev/persist for details, "
-    "or run `claude-persist license <key>` to activate."
+    "This feature requires cairn Pro. "
+    "Visit https://nuavalon.dev/cairn for details, "
+    "or run `cairn license <key>` to activate."
 )
 
 
@@ -41,5 +41,5 @@ def check_license() -> bool:
 def upgrade_message(feature: str = "") -> str:
     """Return a friendly upgrade message for unlicensed paid features."""
     if feature:
-        return f"{feature} requires claude-persist Pro. Visit https://nuavalon.dev/persist for details."
+        return f"{feature} requires Cairn Pro. Visit https://nuavalon.dev/cairn for details."
     return _UPGRADE_MSG

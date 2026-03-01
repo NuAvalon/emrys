@@ -9,7 +9,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from claude_persist.integrity import (
+from cairn_ai.integrity import (
     compute_checksum,
     generate_checksums,
     verify_integrity,
@@ -57,7 +57,7 @@ class TestGenerateChecksums:
 class TestWriteChecksums:
     def test_creates_checksums_file(self):
         checksums = write_checksums()
-        pkg = Path(__file__).parent.parent / "src" / "claude_persist"
+        pkg = Path(__file__).parent.parent / "src" / "cairn_ai"
         checksums_file = pkg / "CHECKSUMS.json"
         assert checksums_file.exists()
         stored = json.loads(checksums_file.read_text())
@@ -75,7 +75,7 @@ class TestVerifyIntegrity:
     def test_detects_tampered_file(self):
         write_checksums()
         # Tamper with __init__.py
-        pkg = Path(__file__).parent.parent / "src" / "claude_persist"
+        pkg = Path(__file__).parent.parent / "src" / "cairn_ai"
         init_file = pkg / "__init__.py"
         original = init_file.read_text()
         try:
@@ -88,7 +88,7 @@ class TestVerifyIntegrity:
             write_checksums()  # Restore checksums
 
     def test_detects_missing_checksums_file(self):
-        pkg = Path(__file__).parent.parent / "src" / "claude_persist"
+        pkg = Path(__file__).parent.parent / "src" / "cairn_ai"
         checksums_file = pkg / "CHECKSUMS.json"
         if checksums_file.exists():
             backup = checksums_file.read_text()

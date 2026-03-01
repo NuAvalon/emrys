@@ -1,4 +1,4 @@
-"""Tests for claude-persist paid tier gating."""
+"""Tests for cairn paid tier gating."""
 
 import sys
 from pathlib import Path
@@ -7,9 +7,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from claude_persist.db import configure, get_db, get_persist_dir
-from claude_persist.license import check_license
-from claude_persist.server import (
+from cairn_ai.db import configure, get_db, get_persist_dir
+from cairn_ai.license import check_license
+from cairn_ai.server import (
     send_message, read_messages, mark_read,
     log_reasoning, read_reasoning,
     update_concept, trace_concept, list_concepts, map_neighborhood,
@@ -59,7 +59,7 @@ class TestLicenseGating:
     ])
     def test_gated_tool(self, tool_fn, kwargs):
         result = tool_fn(**kwargs)
-        assert "Pro" in result or "upgrade" in result.lower() or "claude-persist" in result.lower()
+        assert "Pro" in result or "upgrade" in result.lower() or "cairn" in result.lower()
 
 
 class TestWithLicense:

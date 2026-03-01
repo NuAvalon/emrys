@@ -1,4 +1,4 @@
-"""Cryptographic integrity verification for claude-persist.
+"""Cryptographic integrity verification for cairn.
 
 Two systems:
 1. File checksums — verify installed files match published hashes
@@ -121,7 +121,7 @@ def check_identity_integrity(persist_dir: Path) -> dict:
                 alerts.append(
                     f"INTEGRITY ALERT: {filename} has been modified since last session. "
                     f"SHA-256 mismatch. Review the file and run "
-                    f"'claude-persist trust {filename}' to accept changes."
+                    f"'cairn trust {filename}' to accept changes."
                 )
 
     status = "alert" if alerts else "ok"
@@ -131,7 +131,7 @@ def check_identity_integrity(persist_dir: Path) -> dict:
 def update_identity_checksum(persist_dir: Path, filename: str) -> bool:
     """Update the checksum for a specific identity file (after user review).
 
-    Called by 'claude-persist trust <file>' and during init.
+    Called by 'cairn trust <file>' and during init.
     """
     file_path = persist_dir / filename
     if not file_path.exists():
@@ -160,7 +160,7 @@ def update_identity_checksum(persist_dir: Path, filename: str) -> bool:
 def init_identity_checksums(persist_dir: Path):
     """Compute and store checksums for all protected identity files.
 
-    Called during 'claude-persist init' and after file creation.
+    Called during 'cairn init' and after file creation.
     """
     for filename in PROTECTED_FILES:
         file_path = persist_dir / filename

@@ -10,9 +10,9 @@ from datetime import datetime, timezone
 
 from mcp.server.fastmcp import FastMCP
 
-from claude_persist.db import get_db, get_journal_dir, load_lifecycle, save_lifecycle
-from claude_persist.journal import write_journal, read_journal_file, append_handoff_to_journal
-from claude_persist.license import check_license, upgrade_message
+from cairn_ai.db import get_db, get_journal_dir, load_lifecycle, save_lifecycle
+from cairn_ai.journal import write_journal, read_journal_file, append_handoff_to_journal
+from cairn_ai.license import check_license, upgrade_message
 
 mcp = FastMCP("persist")
 _SERVER_START = datetime.now(timezone.utc)
@@ -68,7 +68,7 @@ def _increment_glyph(agent: str, conn=None) -> int:
 @mcp.tool()
 def ping() -> str:
     """Health check. Returns server name, uptime, and DB stats."""
-    from claude_persist.db import get_db_path
+    from cairn_ai.db import get_db_path
 
     uptime = datetime.now(timezone.utc) - _SERVER_START
     hours, remainder = divmod(int(uptime.total_seconds()), 3600)
@@ -89,7 +89,7 @@ def ping() -> str:
         except Exception as e:
             lines.append(f"  DB error: {e}")
     else:
-        lines.append("DB: not initialized (run `claude-persist init`)")
+        lines.append("DB: not initialized (run `cairn init`)")
 
     return "\n".join(lines)
 
@@ -156,8 +156,8 @@ def open_session(agent: str = "default") -> str:
     write_journal(agent, "SESSION_OPEN", "", f"glyph: {glyph_num}", now)
 
     # Verify identity file integrity (the "toothpick in the door")
-    from claude_persist.db import get_persist_dir
-    from claude_persist.integrity import check_identity_integrity
+    from cairn_ai.db import get_persist_dir
+    from cairn_ai.integrity import check_identity_integrity
 
     integrity = check_identity_integrity(get_persist_dir())
     integrity_msg = ""
@@ -542,7 +542,7 @@ def read_principal() -> str:
     """Read the principal.md file — who you're working with, their preferences,
     communication style, and context. Read this at startup after last_thoughts.
     Returns the file content, or instructions to create one if it doesn't exist."""
-    from claude_persist.db import get_persist_dir
+    from cairn_ai.db import get_persist_dir
 
     principal_path = get_persist_dir() / "principal.md"
     if not principal_path.exists():
@@ -1337,7 +1337,7 @@ def observe_principal(observations: str, agent: str = "default") -> str:
     if not check_license():
         return upgrade_message("observe_principal")
 
-    from claude_persist.db import get_persist_dir
+    from cairn_ai.db import get_persist_dir
 
     principal_path = get_persist_dir() / "principal.md"
     now = _now()

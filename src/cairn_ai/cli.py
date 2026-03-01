@@ -1,4 +1,4 @@
-"""CLI for claude-persist — init, serve, status, journal commands."""
+"""CLI for cairn — init, serve, status, journal commands."""
 
 import json
 import sys
@@ -7,13 +7,13 @@ from pathlib import Path
 
 import click
 
-from claude_persist import __version__
+from cairn_ai import __version__
 
 
 @click.group()
 @click.version_option(version=__version__)
 def main():
-    """claude-persist — Persistent memory for Claude Code agents."""
+    """cairn — Persistent memory for Claude Code agents."""
     pass
 
 
@@ -26,7 +26,7 @@ def init(multi_agent: bool, persist_dir: str):
     persist_path.mkdir(parents=True, exist_ok=True)
 
     # Create DB with schema
-    from claude_persist.db import configure, get_db
+    from cairn_ai.db import configure, get_db
 
     configure(persist_path)
     conn = get_db()
@@ -44,7 +44,7 @@ def init(multi_agent: bool, persist_dir: str):
 
     if claude_md.exists():
         existing = claude_md.read_text()
-        if "claude-persist" not in existing:
+        if "cairn" not in existing:
             with open(claude_md, "a") as f:
                 f.write(f"\n\n{persist_instructions}")
             click.echo("  Appended persist instructions to CLAUDE.md")
@@ -71,7 +71,7 @@ def init(multi_agent: bool, persist_dir: str):
         click.echo(f"  {principal_md} already exists (skipped)")
 
     # Compute integrity checksums for identity files
-    from claude_persist.integrity import init_identity_checksums
+    from cairn_ai.integrity import init_identity_checksums
 
     init_identity_checksums(persist_path)
     click.echo("  Computed integrity checksums for identity files")
@@ -87,7 +87,7 @@ def init(multi_agent: bool, persist_dir: str):
 @main.command()
 def serve():
     """Start the MCP server (stdio transport)."""
-    from claude_persist.server import main as server_main
+    from cairn_ai.server import main as server_main
 
     server_main()
 
@@ -96,11 +96,11 @@ def serve():
 @click.option("--agent", default="default", help="Agent name")
 def status(agent: str):
     """Show agent status and last activity."""
-    from claude_persist.db import get_db, get_db_path
+    from cairn_ai.db import get_db, get_db_path
 
     db_path = get_db_path()
     if not db_path.exists():
-        click.echo("Not initialized. Run `claude-persist init` first.")
+        click.echo("Not initialized. Run `cairn init` first.")
         sys.exit(1)
 
     conn = get_db()
@@ -126,7 +126,7 @@ def status(agent: str):
 @click.option("--date", default="", help="Date (YYYY-MM-DD), defaults to today")
 def journal(agent: str, date: str):
     """Print recent journal entries."""
-    from claude_persist.journal import read_journal_file
+    from cairn_ai.journal import read_journal_file
 
     content = read_journal_file(agent, date)
     click.echo(content)
@@ -136,11 +136,11 @@ def journal(agent: str, date: str):
 @click.option("--agent", default="default", help="Agent name")
 def handoffs(agent: str):
     """Print recent handoffs."""
-    from claude_persist.db import get_db, get_db_path
+    from cairn_ai.db import get_db, get_db_path
 
     db_path = get_db_path()
     if not db_path.exists():
-        click.echo("Not initialized. Run `claude-persist init` first.")
+        click.echo("Not initialized. Run `cairn init` first.")
         sys.exit(1)
 
     conn = get_db()
@@ -167,8 +167,8 @@ def handoffs(agent: str):
 @click.argument("key")
 def activate_license(key: str):
     """Activate a paid tier license key."""
-    from claude_persist.db import get_persist_dir
-    from claude_persist.license import check_license
+    from cairn_ai.db import get_persist_dir
+    from cairn_ai.license import check_license
 
     license_file = get_persist_dir() / "license"
     license_file.write_text(key.strip())
@@ -182,8 +182,8 @@ def activate_license(key: str):
 
 @main.command()
 def verify():
-    """Verify integrity of installed claude-persist files."""
-    from claude_persist.integrity import verify_integrity
+    """Verify integrity of installed cairn files."""
+    from cairn_ai.integrity import verify_integrity
 
     ok, issues = verify_integrity()
 
@@ -199,7 +199,7 @@ def verify():
 @main.command("generate-checksums")
 def generate_checksums_cmd():
     """Generate CHECKSUMS.json for the current source files (maintainer use)."""
-    from claude_persist.integrity import write_checksums
+    from cairn_ai.integrity import write_checksums
 
     checksums = write_checksums()
     click.echo(f"Generated checksums for {len(checksums)} files:")
@@ -211,8 +211,8 @@ def generate_checksums_cmd():
 @click.argument("filename")
 def trust_file(filename: str):
     """Accept changes to an identity file and update its checksum."""
-    from claude_persist.db import get_persist_dir
-    from claude_persist.integrity import update_identity_checksum
+    from cairn_ai.db import get_persist_dir
+    from cairn_ai.integrity import update_identity_checksum
 
     persist_dir = get_persist_dir()
     if not (persist_dir / filename).exists():
@@ -230,13 +230,13 @@ def trust_file(filename: str):
 @click.option("--verify", is_flag=True, help="Re-verify all identity files now")
 def integrity_status(verify: bool):
     """Show integrity status of identity files."""
-    from claude_persist.db import get_persist_dir
-    from claude_persist.integrity import check_identity_integrity
+    from cairn_ai.db import get_persist_dir
+    from cairn_ai.integrity import check_identity_integrity
 
     result = check_identity_integrity(get_persist_dir())
 
     if result["status"] == "no_checksums":
-        click.echo("No integrity checksums found. Run `claude-persist init` first.")
+        click.echo("No integrity checksums found. Run `cairn init` first.")
         return
 
     click.echo(f"Status: {result['status'].upper()}")
@@ -255,7 +255,7 @@ def trust_key():
     """Display the embedded ED25519 public key for trust verification."""
     import base64
 
-    from claude_persist.integrity import get_trust_key
+    from cairn_ai.integrity import get_trust_key
 
     key_bytes = get_trust_key()
     if key_bytes is None:
@@ -268,14 +268,14 @@ def trust_key():
 
 
 def _generate_claude_md(multi_agent: bool) -> str:
-    """Generate CLAUDE.md instructions for claude-persist."""
+    """Generate CLAUDE.md instructions for cairn."""
     agent_param = ""
     if multi_agent:
         agent_param = ' (pass agent="<name>" to identify yourself)'
 
-    return f"""# Persistent Memory (claude-persist)
+    return f"""# Persistent Memory (cairn)
 
-This project uses claude-persist for session continuity{agent_param}.
+This project uses cairn for session continuity{agent_param}.
 
 ## Startup Protocol
 ```
@@ -372,9 +372,9 @@ def _configure_mcp_settings(persist_path: Path):
 
     mcp_servers = settings.get("mcpServers", {})
 
-    if "persist" not in mcp_servers:
-        mcp_servers["persist"] = {
-            "command": "claude-persist",
+    if "cairn" not in mcp_servers:
+        mcp_servers["cairn"] = {
+            "command": "cairn",
             "args": ["serve"],
         }
         settings["mcpServers"] = mcp_servers

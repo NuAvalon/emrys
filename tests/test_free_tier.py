@@ -1,4 +1,4 @@
-"""Tests for claude-persist free tier tools."""
+"""Tests for cairn free tier tools."""
 
 import sys
 import tempfile
@@ -8,8 +8,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from claude_persist.db import configure, get_db, load_lifecycle, get_journal_dir
-from claude_persist.server import (
+from cairn_ai.db import configure, get_db, load_lifecycle, get_journal_dir
+from cairn_ai.server import (
     ping, open_session, set_status, write_handoff,
     read_journal, recover_context, check_session_health, mark_compacted,
     read_principal,
@@ -198,7 +198,7 @@ class TestMarkCompacted:
         # on the NEXT open will see the post-compaction session (which wasn't closed).
         # The compaction itself is recorded in the session before that.
         # Verify the lifecycle data directly:
-        from claude_persist.db import load_lifecycle
+        from cairn_ai.db import load_lifecycle
         lifecycle = load_lifecycle()
         sessions = [s for s in lifecycle["sessions"] if s.get("agent") == "alice"]
         assert any(s.get("close_type") == "compacted" for s in sessions)

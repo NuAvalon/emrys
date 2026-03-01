@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
-from claude_persist.db import get_journal_dir
+from cairn_ai.db import get_journal_dir
 
 
 def write_journal(agent: str, status: str, task: str, finding: str, timestamp: str):

@@ -3,16 +3,16 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "claude-persist"
+name = "cairn-ai"
 version = "0.1.0"
-description = "Persistent memory for Claude Code agents — survive compaction, recover from crashes, maintain identity across sessions."
+description = "Persistent memory for AI agents — survive compaction, recover from crashes, maintain identity across sessions."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
-    { name = "claude-persist contributors" },
+    { name = "NuAvalon" },
 ]
-keywords = ["claude", "claude-code", "mcp", "memory", "agents", "persistence"]
+keywords = ["claude", "claude-code", "mcp", "memory", "agents", "persistence", "cairn"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -30,15 +30,15 @@ dependencies = [
 ]
 
 [project.scripts]
-claude-persist = "claude_persist.cli:main"
+cairn = "cairn_ai.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/NuAvalon/claude-persist"
-Documentation = "https://github.com/NuAvalon/claude-persist#readme"
-Issues = "https://github.com/NuAvalon/claude-persist/issues"
+Homepage = "https://github.com/NuAvalon/cairn-ai"
+Documentation = "https://github.com/NuAvalon/cairn-ai#readme"
+Issues = "https://github.com/NuAvalon/cairn-ai/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/claude_persist"]
+packages = ["src/cairn_ai"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
