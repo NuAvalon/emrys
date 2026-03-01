@@ -119,6 +119,22 @@ def _init_schema(conn: sqlite3.Connection):
         )
     """)
 
+    # Full-text search index over handoffs
+    conn.execute("""
+        CREATE VIRTUAL TABLE IF NOT EXISTS handoffs_fts USING fts5(
+            summary, accomplished, pending, discoveries,
+            content='handoffs', content_rowid='id'
+        )
+    """)
+
+    # Triggers to keep FTS in sync with handoffs
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS handoffs_ai AFTER INSERT ON handoffs BEGIN
+            INSERT INTO handoffs_fts(rowid, summary, accomplished, pending, discoveries)
+            VALUES (new.id, new.summary, new.accomplished, new.pending, new.discoveries);
+        END
+    """)
+
     conn.commit()
 
 

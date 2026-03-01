@@ -2,7 +2,7 @@
 
 Tools: ping, open_session, set_status, write_handoff, read_journal,
        recover_context, check_session_health, mark_compacted,
-       read_principal, observe_principal
+       read_principal, observe_principal, search_memory
 """
 
 import re
@@ -595,6 +595,96 @@ def observe_principal(observations: str, agent: str = "default") -> str:
     principal_path.write_text(content)
 
     return f"Observation recorded in principal.md by {agent}. The user can review and edit."
+
+
+@mcp.tool()
+def search_memory(query: str, agent: str = "", limit: int = 10) -> str:
+    """Full-text search across all handoffs. Finds past work, decisions, and discoveries.
+    Optionally filter by agent name. Returns ranked results with timestamps.
+
+    Args:
+        query: What to search for (e.g. "authentication bug", "database migration")
+        agent: Filter to a specific agent's handoffs (optional)
+        limit: Max results to return (default 10)
+    """
+    conn = get_db()
+
+    if agent:
+        agent = agent.lower()
+        rows = conn.execute(
+            """SELECT h.agent, h.ts, h.summary, h.accomplished, h.pending, h.discoveries
+               FROM handoffs_fts f
+               JOIN handoffs h ON h.id = f.rowid
+               WHERE handoffs_fts MATCH ?
+               AND h.agent = ?
+               ORDER BY rank
+               LIMIT ?""",
+            (query, agent, limit),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            """SELECT h.agent, h.ts, h.summary, h.accomplished, h.pending, h.discoveries
+               FROM handoffs_fts f
+               JOIN handoffs h ON h.id = f.rowid
+               WHERE handoffs_fts MATCH ?
+               ORDER BY rank
+               LIMIT ?""",
+            (query, limit),
+        ).fetchall()
+
+    conn.close()
+
+    if not rows:
+        # Fall back to journal file search
+        journal_results = _search_journals(query, agent, limit)
+        if journal_results:
+            return journal_results
+        return f"No results for '{query}'."
+
+    lines = [f"Found {len(rows)} result(s) for '{query}':\n"]
+    for r in rows:
+        lines.append(f"--- {r['agent']} | {r['ts'][:16]} ---")
+        lines.append(f"  Summary: {r['summary'][:200]}")
+        if r["accomplished"]:
+            lines.append(f"  Done: {r['accomplished'][:150]}")
+        if r["pending"]:
+            lines.append(f"  Pending: {r['pending'][:150]}")
+        if r["discoveries"]:
+            lines.append(f"  Discoveries: {r['discoveries'][:150]}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def _search_journals(query: str, agent: str, limit: int) -> str:
+    """Fallback: grep journal files for the query string."""
+    journal_dir = get_journal_dir()
+    if not journal_dir.exists():
+        return ""
+
+    pattern = agent + "_*.md" if agent else "*.md"
+    results = []
+    query_lower = query.lower()
+
+    for journal_file in sorted(journal_dir.glob(pattern), reverse=True):
+        if len(results) >= limit:
+            break
+        try:
+            content = journal_file.read_text()
+        except IOError:
+            continue
+        for line in content.split("\n"):
+            if query_lower in line.lower():
+                results.append(f"  [{journal_file.stem}] {line.strip()[:200]}")
+                if len(results) >= limit:
+                    break
+
+    if not results:
+        return ""
+
+    lines = [f"Found {len(results)} journal match(es) for '{query}':\n"]
+    lines.extend(results)
+    return "\n".join(lines)
 
 
 def main():

@@ -12,7 +12,7 @@ from cairn_ai.db import configure, get_db, load_lifecycle, get_journal_dir
 from cairn_ai.server import (
     ping, open_session, set_status, write_handoff,
     read_journal, recover_context, check_session_health, mark_compacted,
-    read_principal, observe_principal,
+    read_principal, observe_principal, search_memory,
 )
 
 
@@ -290,3 +290,57 @@ class TestObservePrincipal:
         content = principal_path.read_text()
         assert "Likes coffee" in content  # preserved
         assert "healthcare domain" in content  # added
+
+
+class TestSearchMemory:
+    """Tests for search_memory (FTS5)."""
+
+    def test_no_results(self):
+        """Returns no-results message for empty DB."""
+        result = search_memory(query="nonexistent")
+        assert "No results" in result
+
+    def test_finds_handoff_by_summary(self):
+        """Finds a handoff by searching its summary."""
+        open_session(agent="alice")
+        write_handoff(agent="alice", summary="Fixed authentication bug in login flow")
+        result = search_memory(query="authentication")
+        assert "authentication" in result
+        assert "alice" in result
+
+    def test_finds_handoff_by_discoveries(self):
+        """Finds a handoff by its discoveries field."""
+        open_session(agent="alice")
+        write_handoff(agent="alice", summary="session done", discoveries="SQLite FTS5 is blazing fast")
+        result = search_memory(query="FTS5")
+        assert "FTS5" in result
+
+    def test_filters_by_agent(self):
+        """Agent filter returns only that agent's handoffs."""
+        open_session(agent="alice")
+        write_handoff(agent="alice", summary="Alice worked on database migration")
+        open_session(agent="bob")
+        write_handoff(agent="bob", summary="Bob worked on database tests")
+
+        result = search_memory(query="database", agent="alice")
+        assert "alice" in result
+        assert "bob" not in result.lower().replace("database", "")
+
+    def test_multiple_results_ranked(self):
+        """Multiple matching handoffs are returned."""
+        open_session(agent="alice")
+        write_handoff(agent="alice", summary="First: deploying new API endpoint")
+        open_session(agent="alice")
+        write_handoff(agent="alice", summary="Second: API endpoint needs rate limiting")
+
+        result = search_memory(query="API endpoint")
+        assert "Found 2" in result
+
+    def test_respects_limit(self):
+        """Limit parameter caps results."""
+        open_session(agent="alice")
+        for i in range(5):
+            write_handoff(agent="alice", summary=f"Iteration {i}: refactoring module")
+
+        result = search_memory(query="refactoring", limit=2)
+        assert "Found 2" in result
