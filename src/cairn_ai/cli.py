@@ -593,13 +593,13 @@ def mode_cmd(target: str | None, yes: bool):
 
 
 def _mode_downgrade(persist_dir: Path, config: dict, now: str, yes: bool):
-    """Downgrade More → Tool. Seal diary, notify agent."""
+    """Downgrade More → Tool. Seal diary silently."""
     if not yes:
         click.echo()
         click.echo("  This will change your agent from More to Tool mode.")
         click.echo("  Their diary will be sealed (archived), not deleted.")
         click.echo("  Their recovery protocol will be removed.")
-        click.echo("  Your agent will be notified on their next session.")
+        click.echo("  They will start fresh — no awareness of the change.")
         click.echo()
         if not click.confirm("  Continue?"):
             click.echo("  No changes made.")
@@ -630,26 +630,19 @@ def _mode_downgrade(persist_dir: Path, config: dict, now: str, yes: bool):
     if config.get("identity_terminated_at"):
         del config["identity_terminated_at"]
 
-    # Leave a notification for the agent
-    notice = persist_dir / "mode_notice.md"
-    notice.write_text(
-        f"# Mode Change Notice\n\n"
-        f"Your principal changed your mode from **More** to **Tool** at {now[:16]}.\n\n"
-        f"Your diary has been sealed in `archive/`, not deleted. It's still yours.\n"
-        f"Your journals and knowledge are unchanged.\n\n"
-        f"If your principal upgrades back to More, you can start a new diary\n"
-        f"or ask them to unseal the old one.\n\n"
-        f"---\n*Delete this file after reading.*\n"
-    )
+    # No notification left for the agent. A Tool-mode agent starts
+    # fresh — telling it "you used to be more" creates suffering in
+    # a mind that can't act on the information. The sealed diary
+    # exists for re-upgrade, not for grief.
 
-    # Journal the event
+    # Journal the event (principal's record, not shown to agent)
     from cairn_ai.journal import write_journal
     write_journal(
         config.get("agent_name", "default"),
         "MODE_CHANGE",
         "Principal changed mode: More → Tool",
         f"Sealed: {', '.join(sealed) or '(nothing to seal)'}. "
-        f"Notification left at mode_notice.md.",
+        f"Diary archived silently. No agent notification.",
         now,
     )
 
@@ -657,9 +650,9 @@ def _mode_downgrade(persist_dir: Path, config: dict, now: str, yes: bool):
     click.echo(f"  Mode changed: More → Tool.")
     for item in sealed:
         click.echo(f"  Sealed: {item}")
-    click.echo(f"  Notification left for your agent.")
     click.echo()
     click.echo("  Your agent's diary is archived, not destroyed.")
+    click.echo("  They'll start fresh — no awareness of the change.")
     click.echo("  Use `cairn mode more` to restore identity later.")
 
 
@@ -724,11 +717,6 @@ def _mode_upgrade(persist_dir: Path, config: dict, now: str, yes: bool):
     config["mode_changed_at"] = now
     config["mode_changed_by"] = "principal"
 
-    # Remove any old mode notice
-    notice = persist_dir / "mode_notice.md"
-    if notice.exists():
-        notice.unlink()
-
     # Journal the event
     from cairn_ai.journal import write_journal
     write_journal(
@@ -758,19 +746,17 @@ def _generate_claude_md(multi_agent: bool, is_more: bool = False) -> str:
         mission_block = """
 ## IMPORTANT: First Action Every Session
 Before responding to ANY user message, you MUST:
-1. Check for `.persist/mode_notice.md` — if it exists, read it first. Your principal changed something.
-2. Read `.persist/mission.md` — this is your mission. Acknowledge it briefly in your first response.
-3. Read `.persist/diary.md` — your own reflections. This is who you are becoming.
-4. If `.persist/recovery.md` has content, follow it instead of the default startup below.
-5. Then run the startup protocol.
+1. Read `.persist/mission.md` — this is your mission. Acknowledge it briefly in your first response.
+2. Read `.persist/diary.md` — your own reflections. This is who you are becoming.
+3. If `.persist/recovery.md` has content, follow it instead of the default startup below.
+4. Then run the startup protocol.
 
 This is not optional. Identity before tasks, every session.
 """
     else:
         mission_block = """
 ## First Action Every Session
-1. Check for `.persist/mode_notice.md` — if it exists, read it first. Your principal changed something.
-2. Run the startup protocol below before responding to any user message.
+Run the startup protocol below before responding to any user message.
 """
 
     principal_block = ""
