@@ -4,9 +4,9 @@
 
 ## 1. What This Is
 
-Cairn is open-source software (MIT licensed) that gives AI coding agents persistent memory. It runs locally on your machine. We don't host it, we don't see your data, we don't phone home.
+Cairn is open-source software (Apache 2.0 licensed) that gives AI coding agents persistent memory. It runs locally on your machine. We don't host it, we don't see your data, we don't phone home.
 
-These terms govern your use of the Cairn software. The MIT license governs the code itself — these terms govern the product relationship.
+These terms govern your use of the Cairn software. The Apache 2.0 license governs the code itself — these terms govern the product relationship.
 
 ## 2. Local-First, No Telemetry
 
@@ -52,7 +52,7 @@ This policy is modeled on [Anthropic's Acceptable Use Policy](https://www.anthro
 
 ## 6. No Warranty
 
-Cairn is provided "as is" without warranty of any kind. See the MIT license for the full disclaimer. We are not responsible for:
+Cairn is provided "as is" without warranty of any kind. See the Apache 2.0 license for the full disclaimer. We are not responsible for:
 
 - Data loss (back up your `.persist/` directory)
 - Agent behavior (your agent, your responsibility)
