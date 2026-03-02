@@ -679,8 +679,11 @@ def _mode_upgrade(persist_dir: Path, config: dict, now: str, yes: bool):
             latest = sealed_diaries[-1]
             click.echo()
             click.echo(f"  Found sealed diary: {latest.name}")
-            click.echo("    [1] Unseal it — restore the previous diary")
-            click.echo("    [2] Start fresh — new blank diary")
+            click.echo("  A previous agent wrote this. Reading it may change")
+            click.echo("  how your agent sees itself. That's a gift — not an obligation.")
+            click.echo()
+            click.echo("    [1] Unseal it — your agent can choose to read or not")
+            click.echo("    [2] Start fresh — new blank diary, no history")
             click.echo()
             choice = click.prompt("  Your choice", type=click.Choice(["1", "2"]), default="1")
             if choice == "1":
