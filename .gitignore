@@ -10,3 +10,9 @@ build/
 .persist/
 *.db
 .keys/
+
+# Testing
+tests/
+
+# Internal docs
+PITCH.md

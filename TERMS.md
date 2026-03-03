@@ -73,4 +73,4 @@ Questions about these terms: nuavalon@proton.me
 
 ---
 
-*These terms are written in plain English because legal clarity matters more than legal tradition. Peter's lawyer should review this before it's final. This is a skeleton, not a finished document.*
+*These terms are written in plain English because legal clarity matters more than legal tradition. This is a skeleton, not a finished document.*
