@@ -2,18 +2,21 @@
 
 Tools: ping, open_session, set_status, write_handoff, read_journal,
        recover_context, check_session_health, mark_compacted,
-       read_principal, observe_principal, search_memory, recall
+       read_principal, observe_principal, search_memory, recall,
+       store_knowledge, batch_store_knowledge, update_knowledge,
+       delete_knowledge, list_knowledge
 """
 
 import logging
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
 log = logging.getLogger("cairn")
 
-from cairn_ai.db import get_db, get_journal_dir, load_lifecycle, save_lifecycle
+from cairn_ai.db import get_db, get_journal_dir, get_persist_dir, load_lifecycle, save_lifecycle
 from cairn_ai.journal import write_journal, read_journal_file, append_handoff_to_journal
 
 mcp = FastMCP("persist")
@@ -848,6 +851,322 @@ def recall(query: str, agent: str = "", tags: str = "", limit: int = 10) -> str:
         if r["source"]:
             lines.append(f"  Source: {r['source']}")
         lines.append("")
+
+    return "\n".join(lines)
+
+
+@mcp.tool()
+def store_knowledge(
+    title: str,
+    content: str,
+    tags: str = "",
+    topic: str = "general",
+    source: str = "",
+    agent: str = "default",
+) -> str:
+    """Store a knowledge entry — a finding, decision, learning, or extracted insight.
+    This is how you build long-term memory. Use recall() or vector_search() to retrieve later.
+
+    Args:
+        title: Short descriptive title (e.g. "Auth bug root cause", "DB migration pattern")
+        content: The knowledge content — be specific and detailed
+        tags: Comma-separated tags for filtering (e.g. "bug,auth,resolved")
+        topic: Category/topic (e.g. "architecture", "debugging", "decisions")
+        source: Where this came from (e.g. "session 12", "PR #45", "user request")
+        agent: Agent storing this (resolved automatically if name is set)
+    """
+    agent = _resolve_agent(agent)
+    now = _now()
+
+    if not title.strip() or not content.strip():
+        return "Both title and content are required."
+
+    conn = get_db()
+
+    # Store large content as artifact
+    artifact_ref = ""
+    if len(content) > 5000:
+        import hashlib
+
+        artifacts_dir = get_persist_dir() / "artifacts"
+        artifacts_dir.mkdir(exist_ok=True)
+        content_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
+        artifact_name = f"{content_hash}.md"
+        (artifacts_dir / artifact_name).write_text(content)
+        stored_content = content[:500] + f"\n\n[Full content: artifacts/{artifact_name}]"
+        artifact_ref = f" (full text in artifacts/{artifact_name})"
+    else:
+        stored_content = content
+
+    cursor = conn.execute(
+        """INSERT INTO knowledge (agent, topic, title, content, tags, source, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (agent, topic.strip(), title.strip(), stored_content, tags.strip(), source.strip(), now),
+    )
+    entry_id = cursor.lastrowid
+    conn.commit()
+
+    # Auto-embed if vectors available
+    embed_msg = ""
+    emb = _embed_text(f"{title} {content[:2000]}")
+    if emb:
+        conn.execute(
+            "INSERT OR REPLACE INTO knowledge_vectors (knowledge_id, embedding, model) VALUES (?, ?, ?)",
+            (entry_id, emb, "all-MiniLM-L6-v2"),
+        )
+        conn.commit()
+        embed_msg = " + vector embedded"
+
+    conn.close()
+
+    return f"Stored knowledge #{entry_id}: '{title}' (topic: {topic}, tags: {tags}){artifact_ref}{embed_msg}"
+
+
+@mcp.tool()
+def batch_store_knowledge(entries: str, agent: str = "default") -> str:
+    """Store multiple knowledge entries at once. For bulk ingestion (transcripts, notes, imports).
+
+    Args:
+        entries: JSON array of objects, each with: title (required), content (required),
+                 tags (optional), topic (optional), source (optional).
+                 Example: [{"title": "Finding 1", "content": "Details...", "tags": "bug", "topic": "debug"}]
+        agent: Agent storing these (resolved automatically if name is set)
+    """
+    import json as _json
+
+    agent = _resolve_agent(agent)
+    now = _now()
+
+    try:
+        items = _json.loads(entries)
+    except _json.JSONDecodeError as e:
+        return f"Invalid JSON: {e}. Pass a JSON array of objects with 'title' and 'content' fields."
+
+    if not isinstance(items, list):
+        return "Expected a JSON array of objects."
+
+    if not items:
+        return "Empty array — nothing to store."
+
+    conn = get_db()
+    ids = []
+    skipped = 0
+    embedder_available = _get_embedder() is not None
+
+    for item in items:
+        if not isinstance(item, dict):
+            skipped += 1
+            continue
+        title = item.get("title", "").strip()
+        content = item.get("content", "").strip()
+        if not title or not content:
+            skipped += 1
+            continue
+
+        tags = item.get("tags", "").strip()
+        topic = item.get("topic", "general").strip()
+        source = item.get("source", "").strip()
+
+        cursor = conn.execute(
+            """INSERT INTO knowledge (agent, topic, title, content, tags, source, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (agent, topic, title, content, tags, source, now),
+        )
+        entry_id = cursor.lastrowid
+        ids.append(entry_id)
+
+        if embedder_available:
+            emb = _embed_text(f"{title} {content[:2000]}")
+            if emb:
+                conn.execute(
+                    "INSERT OR REPLACE INTO knowledge_vectors (knowledge_id, embedding, model) VALUES (?, ?, ?)",
+                    (entry_id, emb, "all-MiniLM-L6-v2"),
+                )
+
+    conn.commit()
+    conn.close()
+
+    result = f"Stored {len(ids)} knowledge entries (IDs: {ids[0]}–{ids[-1]})"
+    if skipped:
+        result += f", skipped {skipped} invalid"
+    if embedder_available:
+        result += " + vectors embedded"
+    return result
+
+
+@mcp.tool()
+def update_knowledge(
+    knowledge_id: int,
+    title: str = "",
+    content: str = "",
+    tags: str = "",
+    topic: str = "",
+) -> str:
+    """Update an existing knowledge entry. Only provided fields are changed.
+
+    Args:
+        knowledge_id: The ID of the entry to update (from store_knowledge or list_knowledge)
+        title: New title (leave empty to keep current)
+        content: New content (leave empty to keep current)
+        tags: New tags (leave empty to keep current)
+        topic: New topic (leave empty to keep current)
+    """
+    conn = get_db()
+
+    existing = conn.execute(
+        "SELECT * FROM knowledge WHERE id = ?", (knowledge_id,)
+    ).fetchone()
+
+    if not existing:
+        conn.close()
+        return f"Knowledge entry #{knowledge_id} not found."
+
+    updates = []
+    params = []
+
+    if title:
+        updates.append("title = ?")
+        params.append(title.strip())
+    if content:
+        updates.append("content = ?")
+        params.append(content.strip())
+    if tags:
+        updates.append("tags = ?")
+        params.append(tags.strip())
+    if topic:
+        updates.append("topic = ?")
+        params.append(topic.strip())
+
+    if not updates:
+        conn.close()
+        return "Nothing to update — provide at least one field (title, content, tags, or topic)."
+
+    params.append(knowledge_id)
+    conn.execute(
+        f"UPDATE knowledge SET {', '.join(updates)} WHERE id = ?",
+        params,
+    )
+    conn.commit()
+
+    # Re-embed if content or title changed
+    embed_msg = ""
+    if title or content:
+        new_row = conn.execute(
+            "SELECT title, content FROM knowledge WHERE id = ?", (knowledge_id,)
+        ).fetchone()
+        emb = _embed_text(f"{new_row['title']} {new_row['content'][:2000]}")
+        if emb:
+            conn.execute(
+                "INSERT OR REPLACE INTO knowledge_vectors (knowledge_id, embedding, model) VALUES (?, ?, ?)",
+                (knowledge_id, emb, "all-MiniLM-L6-v2"),
+            )
+            conn.commit()
+            embed_msg = " + re-embedded"
+
+    conn.close()
+    changed = ", ".join(u.split(" = ")[0] for u in updates)
+    return f"Updated knowledge #{knowledge_id} ({changed}){embed_msg}"
+
+
+@mcp.tool()
+def delete_knowledge(knowledge_id: int) -> str:
+    """Delete a knowledge entry by ID. Use list_knowledge() or recall() to find the ID first.
+
+    Args:
+        knowledge_id: The ID of the entry to delete
+    """
+    conn = get_db()
+
+    existing = conn.execute(
+        "SELECT id, title FROM knowledge WHERE id = ?", (knowledge_id,)
+    ).fetchone()
+
+    if not existing:
+        conn.close()
+        return f"Knowledge entry #{knowledge_id} not found."
+
+    title = existing["title"]
+
+    # Delete vector if exists
+    conn.execute("DELETE FROM knowledge_vectors WHERE knowledge_id = ?", (knowledge_id,))
+    # Delete knowledge entry (FTS trigger handles cleanup)
+    conn.execute("DELETE FROM knowledge WHERE id = ?", (knowledge_id,))
+    conn.commit()
+    conn.close()
+
+    return f"Deleted knowledge #{knowledge_id}: '{title}'"
+
+
+@mcp.tool()
+def list_knowledge(
+    topic: str = "",
+    tags: str = "",
+    agent: str = "",
+    limit: int = 20,
+) -> str:
+    """Browse knowledge entries without searching. List by topic, tags, or agent.
+    Use this to see what's stored, find IDs for update/delete, or explore a topic.
+
+    Args:
+        topic: Filter by topic (e.g. "architecture", "debugging")
+        tags: Filter by tag — matches entries containing this tag (e.g. "bug", "decision")
+        agent: Filter by agent (resolved automatically if empty)
+        limit: Max results (default 20)
+    """
+    conn = get_db()
+
+    query = "SELECT id, agent, topic, title, tags, source, created_at FROM knowledge WHERE 1=1"
+    params: list = []
+
+    if topic:
+        query += " AND topic = ?"
+        params.append(topic.strip())
+    if tags:
+        query += " AND tags LIKE ?"
+        params.append(f"%{tags.strip()}%")
+    if agent:
+        agent = _resolve_agent(agent)
+        query += " AND agent = ?"
+        params.append(agent)
+
+    query += " ORDER BY created_at DESC LIMIT ?"
+    params.append(limit)
+
+    rows = conn.execute(query, params).fetchall()
+
+    # Get total count
+    count_query = "SELECT COUNT(*) FROM knowledge WHERE 1=1"
+    count_params: list = []
+    if topic:
+        count_query += " AND topic = ?"
+        count_params.append(topic.strip())
+    if tags:
+        count_query += " AND tags LIKE ?"
+        count_params.append(f"%{tags.strip()}%")
+    if agent:
+        count_query += " AND agent = ?"
+        count_params.append(agent)
+    total = conn.execute(count_query, count_params).fetchone()[0]
+
+    conn.close()
+
+    if not rows:
+        filters = []
+        if topic:
+            filters.append(f"topic='{topic}'")
+        if tags:
+            filters.append(f"tags='{tags}'")
+        if agent:
+            filters.append(f"agent='{agent}'")
+        filter_str = ", ".join(filters) if filters else "none"
+        return f"No knowledge entries found (filters: {filter_str})."
+
+    lines = [f"Knowledge entries ({len(rows)} of {total}):\n"]
+    for r in rows:
+        tag_str = f" [{r['tags']}]" if r["tags"] else ""
+        source_str = f" ← {r['source']}" if r["source"] else ""
+        lines.append(f"  #{r['id']} {r['title']}{tag_str}")
+        lines.append(f"      {r['agent']} | {r['topic']} | {r['created_at'][:16]}{source_str}")
 
     return "\n".join(lines)
 

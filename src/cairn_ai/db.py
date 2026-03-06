@@ -206,6 +206,22 @@ def _init_schema(conn: sqlite3.Connection):
         END
     """)
 
+    # FTS sync triggers for UPDATE and DELETE on knowledge
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS knowledge_ad AFTER DELETE ON knowledge BEGIN
+            INSERT INTO knowledge_fts(knowledge_fts, rowid, title, content, tags)
+            VALUES ('delete', old.id, old.title, old.content, old.tags);
+        END
+    """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS knowledge_au AFTER UPDATE ON knowledge BEGIN
+            INSERT INTO knowledge_fts(knowledge_fts, rowid, title, content, tags)
+            VALUES ('delete', old.id, old.title, old.content, old.tags);
+            INSERT INTO knowledge_fts(rowid, title, content, tags)
+            VALUES (new.id, new.title, new.content, new.tags);
+        END
+    """)
+
     conn.commit()
 
     # Run schema migrations
