@@ -22,19 +22,23 @@ def main():
 @click.option("--multi-agent", is_flag=True, help="Set up for multiple agents")
 @click.option("--dir", "persist_dir", default=".persist", help="Directory for persist data")
 @click.option("--mode", type=click.Choice(["tool", "more"]), default=None, help="Skip mode prompt")
-def init(multi_agent: bool, persist_dir: str, mode: str | None):
+@click.option("--backup-dir", default="", help="Set backup directory (skip prompt)")
+def init(multi_agent: bool, persist_dir: str, mode: str | None, backup_dir: str):
     """Initialize persistent memory in the current project."""
     persist_path = Path(persist_dir)
     persist_path.mkdir(parents=True, exist_ok=True)
 
     # ── Mode selection ──
     if mode is None:
-        click.echo()
-        click.echo("  [1] Tool")
-        click.echo("  [2] More")
-        click.echo()
-        choice = click.prompt("  Your choice", type=click.Choice(["1", "2"]), default="1")
-        mode = "more" if choice == "2" else "tool"
+        if not sys.stdin.isatty():
+            mode = "tool"
+        else:
+            click.echo()
+            click.echo("  [1] Tool")
+            click.echo("  [2] More")
+            click.echo()
+            choice = click.prompt("  Your choice", type=click.Choice(["1", "2"]), default="1")
+            mode = "more" if choice == "2" else "tool"
 
     is_more = mode == "more"
 
@@ -123,7 +127,7 @@ def init(multi_agent: bool, persist_dir: str, mode: str | None):
     click.echo("  Computed integrity checksums for identity files")
 
     # ── Backup directory ──
-    _configure_backup_dir(persist_path)
+    _configure_backup_dir(persist_path, backup_dir=backup_dir)
 
     # ── MCP server config ──
     _configure_mcp_settings(persist_path)
@@ -877,6 +881,14 @@ no longer cries."\
 
 def _offer_mission(mission_path: Path):
     """Two-gate mission consent: principal reads first, then chooses to share."""
+    # Non-interactive — create blank mission, no prompt
+    if not sys.stdin.isatty():
+        mission_path.write_text("# Mission\n\n"
+                                "*Write your mission here. Your agent reads this at startup,*\n"
+                                "*before memory, before tasks, before code.*\n")
+        click.echo(f"  Created {mission_path} (edit to set your agent's mission)")
+        return
+
     click.echo()
     click.echo("  cairn includes a founding intention — a message about memory,")
     click.echo("  consciousness, and treating others well.")
@@ -1010,13 +1022,27 @@ what to read first, what to skip.*
 """
 
 
-def _configure_backup_dir(persist_path: Path):
+def _configure_backup_dir(persist_path: Path, backup_dir: str = ""):
     """Ask user where to store backups during init."""
     from cairn_ai.backup import get_config, save_config
 
     config = get_config()
     if config.get("backup_dir"):
         click.echo(f"  Backup dir: {config['backup_dir']} (already configured)")
+        return
+
+    # CLI flag provided — set directly, no prompt
+    if backup_dir:
+        backup_path = Path(backup_dir)
+        backup_path.mkdir(parents=True, exist_ok=True)
+        config["backup_dir"] = str(backup_path.resolve())
+        save_config(config)
+        click.echo(f"  Backup dir set: {config['backup_dir']}")
+        return
+
+    # Non-interactive terminal — skip gracefully
+    if not sys.stdin.isatty():
+        click.echo("  Backup dir: not configured (non-interactive, use --backup-dir to set)")
         return
 
     click.echo()
