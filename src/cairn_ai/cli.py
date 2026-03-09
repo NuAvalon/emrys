@@ -72,7 +72,9 @@ def main():
 @click.option("--mode", type=click.Choice(["tool", "more"]), default=None, help="Skip mode prompt")
 @click.option("--backup-dir", default="", help="Set backup directory (skip prompt)")
 @click.option("--sovereign", is_flag=True, help="Enable sovereign identity (human-rooted trust chain)")
-def init(multi_agent: bool, persist_dir: str, mode: str | None, backup_dir: str, sovereign: bool):
+@click.option("--editor", type=click.Choice(["auto", "claude-code", "cursor", "windsurf", "cline"]),
+              default="auto", help="Target editor for MCP config (default: auto-detect)")
+def init(multi_agent: bool, persist_dir: str, mode: str | None, backup_dir: str, sovereign: bool, editor: str):
     """Initialize persistent memory in the current project."""
     persist_path = Path(persist_dir)
     persist_path.mkdir(parents=True, exist_ok=True)
@@ -179,7 +181,7 @@ def init(multi_agent: bool, persist_dir: str, mode: str | None, backup_dir: str,
     _configure_backup_dir(persist_path, backup_dir=backup_dir)
 
     # ── MCP server config ──
-    _configure_mcp_settings(persist_path)
+    _configure_mcp_settings(persist_path, editor=editor)
 
     # ── Sovereign identity ──
     if sovereign:
@@ -1205,40 +1207,89 @@ def _configure_backup_dir(persist_path: Path, backup_dir: str = ""):
         click.echo("  Skipped. Run `cairn backup --dir /path` later to set up backups.")
 
 
-def _configure_mcp_settings(persist_path: Path):
-    """Add cairn MCP server to .mcp.json (project-level MCP config)."""
-    import shutil
+def _detect_editor() -> str:
+    """Auto-detect which editor is being used based on project markers."""
+    if Path(".cursor").is_dir():
+        return "cursor"
+    if Path(".windsurf").is_dir():
+        return "windsurf"
+    # Check environment hints
+    import os
+    terminal = os.environ.get("TERM_PROGRAM", "").lower()
+    if "cursor" in terminal:
+        return "cursor"
+    if "windsurf" in terminal:
+        return "windsurf"
+    # Default to Claude Code (.mcp.json)
+    return "claude-code"
 
-    mcp_file = Path(".mcp.json")
 
+def _mcp_config_paths(editor: str) -> list[tuple[Path, str]]:
+    """Return (config_path, display_name) pairs for the target editor.
+
+    Always includes .mcp.json (Claude Code standard) plus editor-specific paths.
+    """
+    paths = [(Path(".mcp.json"), ".mcp.json (Claude Code)")]
+
+    if editor == "cursor":
+        cursor_dir = Path(".cursor")
+        cursor_dir.mkdir(exist_ok=True)
+        paths.append((cursor_dir / "mcp.json", ".cursor/mcp.json (Cursor)"))
+    elif editor == "windsurf":
+        windsurf_dir = Path.home() / ".codeium" / "windsurf"
+        windsurf_dir.mkdir(parents=True, exist_ok=True)
+        paths.append((windsurf_dir / "mcp_config.json", "~/.codeium/windsurf/mcp_config.json (Windsurf)"))
+    elif editor == "cline":
+        vscode_dir = Path(".vscode")
+        vscode_dir.mkdir(exist_ok=True)
+        paths.append((vscode_dir / "mcp.json", ".vscode/mcp.json (Cline)"))
+    # claude-code: just .mcp.json (already included)
+
+    return paths
+
+
+def _write_mcp_config(config_path: Path, cairn_entry: dict) -> bool:
+    """Write cairn server entry to an MCP config file. Returns True if newly added."""
     settings = {}
-    if mcp_file.exists():
+    if config_path.exists():
         try:
-            settings = json.loads(mcp_file.read_text())
+            settings = json.loads(config_path.read_text())
         except (json.JSONDecodeError, IOError):
             pass
 
     mcp_servers = settings.get("mcpServers", {})
+    was_configured = "cairn" in mcp_servers
+    mcp_servers["cairn"] = cairn_entry
+    settings["mcpServers"] = mcp_servers
+    config_path.write_text(json.dumps(settings, indent=2) + "\n")
+    return not was_configured
 
-    # Use full path to cairn executable — venvs won't be on the agent's PATH
+
+def _configure_mcp_settings(persist_path: Path, editor: str = "auto"):
+    """Add cairn MCP server to editor-appropriate config files."""
+    import shutil
+
+    if editor == "auto":
+        editor = _detect_editor()
+
     cairn_path = shutil.which("cairn") or "cairn"
     abs_persist = str(persist_path.resolve())
-    was_configured = "cairn" in mcp_servers
 
-    # Always update — reinstalls can change the cairn binary path or persist location
-    mcp_servers["cairn"] = {
+    cairn_entry = {
         "command": cairn_path,
         "args": ["serve", "--persist-dir", abs_persist],
     }
-    settings["mcpServers"] = mcp_servers
-    mcp_file.write_text(json.dumps(settings, indent=2) + "\n")
 
-    if was_configured:
-        click.echo(f"  Updated MCP server config ({cairn_path}, persist={abs_persist})")
-    else:
-        click.echo(f"  Added MCP server config to .mcp.json ({cairn_path})")
+    config_paths = _mcp_config_paths(editor)
 
-    # Clean up old location if it exists and only has mcpServers
+    for config_path, display_name in config_paths:
+        is_new = _write_mcp_config(config_path, cairn_entry)
+        if is_new:
+            click.echo(f"  Added MCP server config to {display_name}")
+        else:
+            click.echo(f"  Updated MCP server config in {display_name}")
+
+    # Clean up old location if it exists
     old_settings = Path(".claude/settings.json")
     if old_settings.exists():
         try:
