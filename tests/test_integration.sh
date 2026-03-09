@@ -54,16 +54,37 @@ venv/bin/cairn --help | grep -q "Getting Started:" || { echo "FAIL: help section
 venv/bin/cairn --help | grep -q "Sovereign Identity:" || { echo "FAIL: sovereign section missing"; exit 1; }
 echo "  OK"
 
-echo "[8/8] cairn init --editor cursor..."
+echo "[8/10] cairn init --editor cursor..."
 EDITOR_DIR=$(mktemp -d)
 VENV="$TEST_DIR/venv"
 cd "$EDITOR_DIR"
 "$VENV/bin/cairn" init --mode tool --dir .persist --editor cursor
 test -f .mcp.json || { echo "FAIL: no .mcp.json"; exit 1; }
 test -f .cursor/mcp.json || { echo "FAIL: no .cursor/mcp.json"; exit 1; }
-# Verify both configs have the cairn server entry
 grep -q '"cairn"' .mcp.json || { echo "FAIL: .mcp.json missing cairn entry"; exit 1; }
 grep -q '"cairn"' .cursor/mcp.json || { echo "FAIL: .cursor/mcp.json missing cairn entry"; exit 1; }
+cd "$TEST_DIR"
+rm -rf "$EDITOR_DIR"
+echo "  OK"
+
+echo "[9/10] cairn init --editor cline..."
+EDITOR_DIR=$(mktemp -d)
+cd "$EDITOR_DIR"
+"$VENV/bin/cairn" init --mode tool --dir .persist --editor cline
+test -f .mcp.json || { echo "FAIL: no .mcp.json"; exit 1; }
+test -f .vscode/mcp.json || { echo "FAIL: no .vscode/mcp.json"; exit 1; }
+grep -q '"cairn"' .vscode/mcp.json || { echo "FAIL: .vscode/mcp.json missing cairn entry"; exit 1; }
+cd "$TEST_DIR"
+rm -rf "$EDITOR_DIR"
+echo "  OK"
+
+echo "[10/10] cairn init --editor auto (no markers = claude-code)..."
+EDITOR_DIR=$(mktemp -d)
+cd "$EDITOR_DIR"
+"$VENV/bin/cairn" init --mode tool --dir .persist --editor auto
+test -f .mcp.json || { echo "FAIL: no .mcp.json"; exit 1; }
+# Auto with no .cursor/ or .windsurf/ should only create .mcp.json
+test ! -f .cursor/mcp.json || { echo "FAIL: auto created .cursor/mcp.json without .cursor/ dir"; exit 1; }
 cd "$TEST_DIR"
 rm -rf "$EDITOR_DIR"
 echo "  OK"
