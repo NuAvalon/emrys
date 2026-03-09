@@ -26,10 +26,10 @@ def _get_last_hash(journal_file: Path) -> str:
     if not journal_file.exists():
         return "0" * 32  # Genesis hash
     content = journal_file.read_text()
-    # Find last <!-- hash: ... --> marker
+    # Match both formats: <!-- hash:X prev:Y --> and legacy <!-- hash:X -->
     import re
-    hashes = re.findall(r"<!-- hash:(\w+) -->", content)
-    return hashes[-1] if hashes else "000000000000"
+    hashes = re.findall(r"<!-- hash:(\w+)(?: prev:\w+)? -->", content)
+    return hashes[-1] if hashes else "0" * 32
 
 
 def write_journal(agent: str, status: str, task: str, finding: str, timestamp: str):
@@ -143,10 +143,22 @@ def verify_journal_chain(agent: str, date: str = "") -> dict:
     if not markers:
         return {"status": "ok", "entries": 0, "break_at": None}  # Pre-chain journal
 
-    # Split content by hash markers to get entry bodies
+    # Split content by hash markers to get entry bodies.
+    # parts[0] = header + first entry body (before first marker)
+    # parts[1..N] = entry bodies between subsequent markers
     parts = re.split(r"<!-- hash:\w+ prev:\w+ -->\n?", content)
-    # First part is header, rest are entry bodies preceding each marker
-    # We need the text BETWEEN markers (or between start and first marker)
+
+    # Extract entry bodies: the first part has the journal header prepended,
+    # so strip it — entry bodies start with "## " (timestamp heading).
+    entry_bodies = []
+    for i, part in enumerate(parts[:-1]):  # Last part is trailing empty string
+        if i == 0:
+            # Header is everything before the first "## " entry
+            idx = part.find("## ")
+            body = part[idx:] if idx >= 0 else part
+        else:
+            body = part
+        entry_bodies.append(body)
 
     # Rebuild and verify — recompute hashes from actual content
     prev = "0" * 32
@@ -155,7 +167,7 @@ def verify_journal_chain(agent: str, date: str = "") -> dict:
             return {"status": "broken", "entries": len(markers), "break_at": i,
                     "reason": f"prev pointer mismatch at entry {i}"}
         # Recompute hash from the entry body + prev hash
-        entry_body = parts[i + 1] if (i + 1) < len(parts) else ""
+        entry_body = entry_bodies[i] if i < len(entry_bodies) else ""
         recomputed = _hash_entry(prev + entry_body)
         if recomputed != entry_hash:
             return {"status": "broken", "entries": len(markers), "break_at": i,
