@@ -1,0 +1,21 @@
+# cairn-ai — persistent agent memory
+#
+# Usage:
+#   docker compose up -d        # Start cairn MCP server
+#   docker compose exec cairn cairn search "query"  # Search
+#   docker compose down         # Stop
+#
+# First-time setup:
+#   docker compose run cairn init --sovereign --mode tool --dir /agent/.persist
+
+services:
+  cairn:
+    build: .
+    container_name: cairn
+    volumes:
+      - cairn-data:/agent/.persist
+    stdin_open: true   # Required for MCP stdio transport
+    restart: unless-stopped
+
+volumes:
+  cairn-data:

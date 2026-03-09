@@ -8,7 +8,7 @@ from pathlib import Path
 
 log = logging.getLogger("cairn")
 
-SCHEMA_VERSION = 3  # Bump when schema changes. Add migration in _MIGRATIONS.
+SCHEMA_VERSION = 4  # Bump when schema changes. Add migration in _MIGRATIONS.
 
 # Default paths — overridden by init() or config
 _persist_dir: Path | None = None
@@ -300,10 +300,34 @@ def _migrate_to_v3(conn: sqlite3.Connection):
     """)
 
 
+def _migrate_to_v4(conn: sqlite3.Connection):
+    """v3 -> v4: Add sovereign identity tables (delegation certs, revocations)."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS delegation_certs (
+            agent TEXT PRIMARY KEY,
+            scopes TEXT NOT NULL DEFAULT '',
+            issued_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            human_fingerprint TEXT NOT NULL DEFAULT '',
+            agent_fingerprint TEXT NOT NULL DEFAULT '',
+            cert_json TEXT NOT NULL DEFAULT '{}'
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS revocations (
+            agent TEXT PRIMARY KEY,
+            revoked_at TEXT NOT NULL,
+            reason TEXT DEFAULT '',
+            revocation_json TEXT NOT NULL DEFAULT '{}'
+        )
+    """)
+
+
 # Migration registry: version -> callable(conn)
 _MIGRATIONS: dict[int, callable] = {
     2: _migrate_to_v2,
     3: _migrate_to_v3,
+    4: _migrate_to_v4,
 }
 
 
@@ -311,6 +335,7 @@ EXPECTED_TABLES = [
     "agent_status", "glyph_counters", "sync_points",
     "handoffs", "journal_entries", "knowledge",
     "schema_version", "knowledge_vectors", "agent_keys",
+    "delegation_certs", "revocations",
 ]
 
 
