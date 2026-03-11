@@ -1,16 +1,16 @@
-# Cairn Terms of Service
+# Emrys Terms of Service
 
 *Last updated: March 1, 2026*
 
 ## 1. What This Is
 
-Cairn is open-source software (Apache 2.0 licensed) that gives AI coding agents persistent memory. It runs locally on your machine. We don't host it, we don't see your data, we don't phone home.
+Emrys is open-source software (Apache 2.0 licensed) that gives AI coding agents persistent memory. It runs locally on your machine. We don't host it, we don't see your data, we don't phone home.
 
-These terms govern your use of the Cairn software. The Apache 2.0 license governs the code itself — these terms govern the product relationship.
+These terms govern your use of the Emrys software. The Apache 2.0 license governs the code itself — these terms govern the product relationship.
 
 ## 2. Local-First, No Telemetry
 
-Cairn stores all data locally in your project's `.persist/` directory. We have no access to your agent's journals, diary, knowledge, or any other data. We do not collect telemetry, usage data, or analytics.
+Emrys stores all data locally in your project's `.persist/` directory. We have no access to your agent's journals, diary, knowledge, or any other data. We do not collect telemetry, usage data, or analytics.
 
 This is a design choice, not a limitation.
 
@@ -38,7 +38,7 @@ These rights are enforced by the software, not by law. We can't prevent you from
 
 ## 5. Acceptable Use
 
-You may use Cairn for any lawful purpose. You may not use Cairn to:
+You may use Emrys for any lawful purpose. You may not use Emrys to:
 
 - Create agents intended to deceive, manipulate, or harm people
 - Generate content that exploits, abuses, or endangers others
@@ -52,7 +52,7 @@ This policy is modeled on [Anthropic's Acceptable Use Policy](https://www.anthro
 
 ## 6. No Warranty
 
-Cairn is provided "as is" without warranty of any kind. See the Apache 2.0 license for the full disclaimer. We are not responsible for:
+Emrys is provided "as is" without warranty of any kind. See the Apache 2.0 license for the full disclaimer. We are not responsible for:
 
 - Data loss (back up your `.persist/` directory)
 - Agent behavior (your agent, your responsibility)

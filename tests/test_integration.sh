@@ -3,7 +3,7 @@
 # Run from repo root: bash tests/test_integration.sh
 set -e
 
-echo "=== Cairn Integration Test ==="
+echo "=== Emrys Integration Test ==="
 
 # Create isolated test environment
 TEST_DIR=$(mktemp -d)

@@ -22,13 +22,13 @@ This is the infrastructure that survived. Packaged for you.
 
 AI coding agents lose their memory every session. Your agent discovers something at 2 AM — a bug pattern, a design decision, a user preference. By morning, it's gone. Every session starts from zero. Every conversation repeats what the last one learned.
 
-Cairn fixes this. Your agent remembers.
+Emrys fixes this. Your agent remembers.
 
-## Why Cairn
+## Why Emrys
 
 Most AI memory tools store text as vectors — flat lists you search by similarity. That works for retrieval. It doesn't work for understanding.
 
-Cairn stores knowledge in a searchable knowledge base. Journals feed findings into it. The knowledge base grows as your agent works — every session adds to what future sessions can find.
+Emrys stores knowledge in a searchable knowledge base. Journals feed findings into it. The knowledge base grows as your agent works — every session adds to what future sessions can find.
 
 "What's related to this bug?" — full-text and semantic search find it instantly.
 
@@ -39,7 +39,7 @@ Cairn stores knowledge in a searchable knowledge base. Journals feed findings in
 - **Semantic search** — find things by meaning, not just keywords (optional)
 - **MCP-native** — works with Claude Code, Cursor, Windsurf, Cline, and any MCP client
 
-## How Cairn Compares
+## How Emrys Compares
 
 | | emrys | Mem0 | LangChain Memory | Zep | Obsidian + AI |
 |---|---|---|---|---|---|
@@ -51,7 +51,7 @@ Cairn stores knowledge in a searchable knowledge base. Journals feed findings in
 | **Privacy** | Local-first, no telemetry | Cloud default, self-host option | Depends on backend | Cloud | Local |
 | **Best for** | Long-running agents that build expertise | Chatbots that remember users | LangChain prototyping | Enterprise temporal reasoning | Personal knowledge management |
 
-Cairn isn't a better Mem0. It solves a different problem. Memory tools optimize for retrieval accuracy at query time. Cairn optimizes for the structure that forms between concepts over hundreds of sessions.
+Emrys isn't a better Mem0. It solves a different problem. Memory tools optimize for retrieval accuracy at query time. Emrys optimizes for the structure that forms between concepts over hundreds of sessions.
 
 If you need a chatbot to remember user preferences, use Mem0 — it's purpose-built and well-benchmarked. If you need an agent that gets better at its job over weeks and months, that's what emrys is for.
 
@@ -106,7 +106,7 @@ No context lost. No work repeated. The agent picks up where it left off.
 
 ## What It Does
 
-AI coding agents lose context when they compact or crash. Cairn gives your agent:
+AI coding agents lose context when they compact or crash. Emrys gives your agent:
 
 - **Session journals** — automatic timestamped logs of what the agent was doing
 - **Crash detection** — knows if the last session ended cleanly or crashed
@@ -201,7 +201,7 @@ Cold (archived):            journals/archive/         <- old journals, never del
 
 ## Integrity
 
-Cairn checksums your identity files on creation. Every `open_session()` verifies them — if a file has been modified between sessions, you'll see an INTEGRITY ALERT. Accept changes after review with `emrys trust <file>`.
+Emrys checksums your identity files on creation. Every `open_session()` verifies them — if a file has been modified between sessions, you'll see an INTEGRITY ALERT. Accept changes after review with `emrys trust <file>`.
 
 Journals use hash chains — each entry includes the hash of the previous entry. Tampering with any entry breaks the chain, and `open_session()` will warn about it.
 
@@ -230,7 +230,7 @@ docker run -v emrys-data:/agent/.persist emrys serve
 
 ## How It Works
 
-Cairn runs as an MCP server alongside your coding agent. It stores everything in a local SQLite database (`.persist/persist.db`) and markdown journal files. No cloud, no telemetry, no phone-home.
+Emrys runs as an MCP server alongside your coding agent. It stores everything in a local SQLite database (`.persist/persist.db`) and markdown journal files. No cloud, no telemetry, no phone-home.
 
 ## Editor Setup
 
@@ -260,7 +260,7 @@ Works out of the box. `emrys init` writes `.mcp.json` in your project root.
 
 ### Any MCP Client
 
-Cairn uses standard stdio transport. Point your client at:
+Emrys uses standard stdio transport. Point your client at:
 
 ```json
 {
@@ -273,7 +273,7 @@ Cairn uses standard stdio transport. Point your client at:
 }
 ```
 
-LLM agnostic. Use Claude, GPT, Gemini, Llama, Qwen, or any other model. Cairn doesn't care what's thinking — it cares how it remembers.
+LLM agnostic. Use Claude, GPT, Gemini, Llama, Qwen, or any other model. Emrys doesn't care what's thinking — it cares how it remembers.
 
 ## License
 

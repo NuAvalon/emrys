@@ -1,4 +1,4 @@
-"""Cairn MCP server — persistent memory for AI coding agents.
+"""Emrys MCP server — persistent memory for AI coding agents.
 
 Tools: ping, open_session, set_status, write_handoff, read_journal,
        recover_context, check_session_health, mark_compacted,

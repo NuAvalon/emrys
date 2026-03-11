@@ -1,21 +1,21 @@
-# cairn-ai — persistent agent memory
+# emrys — persistent agent memory
 #
 # Usage:
-#   docker compose up -d        # Start cairn MCP server
-#   docker compose exec cairn cairn search "query"  # Search
+#   docker compose up -d        # Start emrys MCP server
+#   docker compose exec emrys emrys search "query"  # Search
 #   docker compose down         # Stop
 #
 # First-time setup:
-#   docker compose run cairn init --sovereign --mode tool --dir /agent/.persist
+#   docker compose run emrys init --sovereign --mode tool --dir /agent/.persist
 
 services:
-  cairn:
+  emrys:
     build: .
-    container_name: cairn
+    container_name: emrys
     volumes:
-      - cairn-data:/agent/.persist
+      - emrys-data:/agent/.persist
     stdin_open: true   # Required for MCP stdio transport
     restart: unless-stopped
 
 volumes:
-  cairn-data:
+  emrys-data:
