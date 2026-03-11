@@ -86,7 +86,9 @@ def write_checksums():
 
 # ── User identity file integrity (the "toothpick in the door") ──
 
-PROTECTED_FILES = ["principal.md", "mission.md"]  # Files checked on every open_session()
+PROTECTED_FILES = ["mission.md", "diary.md", "recovery.md"]  # Agent-owned files, checked on open_session()
+# NOTE: principal.md is intentionally excluded — it's human-owned.
+# Human edits to their preferences must never trigger integrity alerts.
 
 
 def check_identity_integrity(persist_dir: Path) -> dict:

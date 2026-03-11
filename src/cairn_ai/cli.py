@@ -143,16 +143,19 @@ def init(multi_agent: bool, persist_dir: str, mode: str | None, backup_dir: str,
     else:
         click.echo("  MEMORY.md already exists (skipped)")
 
-    # ── More mode: identity files ──
-    if is_more:
-        # Principal profile
-        principal_md = persist_path / "principal.md"
-        if not principal_md.exists():
-            principal_md.write_text(_generate_principal_md())
+    # ── Principal.md (both modes — user preferences/customization) ──
+    principal_md = persist_path / "principal.md"
+    if not principal_md.exists():
+        principal_md.write_text(_generate_principal_md())
+        if is_more:
             click.echo(f"  Created {principal_md} (who your agent works with)")
         else:
-            click.echo(f"  {principal_md} already exists (skipped)")
+            click.echo(f"  Created {principal_md} (your preferences — edit freely)")
+    else:
+        click.echo(f"  {principal_md} already exists (skipped)")
 
+    # ── More mode: identity files ──
+    if is_more:
         # Diary — the agent's own reflections
         diary_md = persist_path / "diary.md"
         if not diary_md.exists():

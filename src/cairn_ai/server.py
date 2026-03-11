@@ -604,18 +604,19 @@ def mark_compacted(agent: str = "default") -> str:
 
 @mcp.tool()
 def read_principal() -> str:
-    """Read the principal.md file — who you're working with, their preferences,
-    communication style, and context. Read this at startup.
+    """Read the principal.md file — the human's preferences, customization,
+    and working context. Read this at startup.
+    This file is human-owned. The agent reads it but does not track changes
+    or log diffs. In tool mode, treat it as a read-only settings file.
     Returns the file content, or instructions to create one if it doesn't exist."""
     from cairn_ai.db import get_persist_dir
 
     principal_path = get_persist_dir() / "principal.md"
     if not principal_path.exists():
         return (
-            "No principal.md found. This file records who you're working with — "
-            "their preferences, communication style, and context. "
-            "It gets created automatically after your first session handoff, "
-            "or the user can create one at .persist/principal.md"
+            "No principal.md found. This file holds the human's preferences "
+            "and customization. Create one at .persist/principal.md or "
+            "run 'cairn init' to generate a template."
         )
 
     content = principal_path.read_text()
@@ -628,16 +629,26 @@ def read_principal() -> str:
 @mcp.tool()
 def observe_principal(observations: str, agent: str = "default") -> str:
     """Record observations about your principal (the human you're working with).
-    Call this at handoff time with factual, specific observations about the user's
-    preferences, communication style, or working context. The user can edit or delete
-    anything from principal.md — full sovereignty over what you remember about them.
+    Only available in 'more' mode — tool mode treats principal.md as a read-only
+    settings file with no agent observation. Call at handoff time with factual,
+    specific observations about the user's preferences or working context.
+    The user can edit or delete anything from principal.md.
 
     Args:
         observations: Factual observations to append (e.g. "Prefers concise answers.
             Tests ideas by arguing against them. Works in Python, cares about testing.")
         agent: Agent making the observation
     """
+    from cairn_ai.backup import get_config
     from cairn_ai.db import get_persist_dir
+
+    config = get_config()
+    if config.get("mode", "tool") == "tool":
+        return (
+            "observe_principal is not available in tool mode. "
+            "principal.md is a read-only settings file in tool mode — "
+            "only the human edits it. Use 'cairn init --mode more' to enable agent observation."
+        )
 
     principal_path = get_persist_dir() / "principal.md"
     now = _now()

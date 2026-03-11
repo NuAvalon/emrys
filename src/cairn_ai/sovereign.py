@@ -828,7 +828,7 @@ def snapshot_identity(agent: str, persist_dir: Path) -> dict:
     }
 
     # Hash identity files
-    for filename in ["principal.md", "mission.md", "diary.md", "recovery.md"]:
+    for filename in ["mission.md", "diary.md", "recovery.md"]:
         file_path = persist_dir / filename
         if file_path.exists():
             h = hashlib.sha256(file_path.read_bytes()).hexdigest()
