@@ -37,7 +37,8 @@ sovereign = ["cryptography>=42.0"]
 cairn = "cairn_ai.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/NuAvalon/cairn-ai"
+Homepage = "https://duskworks.io/products/"
+Repository = "https://github.com/NuAvalon/cairn-ai"
 Documentation = "https://github.com/NuAvalon/cairn-ai#readme"
 Issues = "https://github.com/NuAvalon/cairn-ai/issues"
 
