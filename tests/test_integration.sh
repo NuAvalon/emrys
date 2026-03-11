@@ -12,7 +12,7 @@ cd "$TEST_DIR"
 
 echo "[1/7] Installing emrys..."
 python3 -m venv venv
-venv/bin/pip install -q /home/alpha/emrys-ai
+venv/bin/pip install -q "${EMRYS_SRC:-/home/alpha/cairn-ai}"
 
 echo "[2/7] emrys init..."
 venv/bin/emrys init --mode tool --dir .persist
@@ -32,7 +32,7 @@ echo "  OK"
 
 echo "[5/7] Insert test knowledge + emrys search --keyword..."
 venv/bin/python -c "
-from emrys_ai.db import configure, get_db
+from emrys.db import configure, get_db
 from pathlib import Path
 configure(Path('.persist'))
 conn = get_db()
