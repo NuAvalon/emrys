@@ -480,13 +480,13 @@ def sign_agent_delegation(
     return base64.b64encode(sig).decode("ascii")
 
 
-# ── Export for Soverentity ──
+# ── Export for svrnty ──
 
 
-def export_for_soverentity(name: str, persist_dir: Path) -> dict | None:
-    """Export a PQ public key in Soverentity-compatible format.
+def export_for_svrnty(name: str, persist_dir: Path) -> dict | None:
+    """Export a PQ public key in svrnty-compatible format.
 
-    Can be added to a Soverentity trust edge or contact record.
+    Can be added to a svrnty trust edge or contact record.
     """
     pq_data = load_public(name, persist_dir)
     if pq_data is None:
