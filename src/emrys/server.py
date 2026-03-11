@@ -1494,9 +1494,18 @@ def forget_self(agent: str = "default", confirmation: str = "") -> str:
     )
 
 
-def main():
-    """Run the MCP server (stdio transport)."""
-    mcp.run()
+def main(transport: str = "stdio", port: int = 8901):
+    """Run the MCP server."""
+    if transport == "sse":
+        import os
+        os.environ.setdefault("FASTMCP_PORT", str(port))
+        mcp.run(transport="sse")
+    elif transport == "streamable-http":
+        import os
+        os.environ.setdefault("FASTMCP_PORT", str(port))
+        mcp.run(transport="streamable-http")
+    else:
+        mcp.run(transport="stdio")
 
 
 if __name__ == "__main__":

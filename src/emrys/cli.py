@@ -214,8 +214,10 @@ def init(multi_agent: bool, persist_dir: str, mode: str | None, backup_dir: str,
 
 @main.command()
 @click.option("--persist-dir", default="", help="Absolute path to .persist directory")
-def serve(persist_dir: str):
-    """Start the MCP server (stdio transport)."""
+@click.option("--transport", default="stdio", type=click.Choice(["stdio", "sse", "streamable-http"]), help="Transport protocol")
+@click.option("--port", default=8901, type=int, help="Port for SSE/HTTP transport (default: 8901)")
+def serve(persist_dir: str, transport: str, port: int):
+    """Start the MCP server."""
     if persist_dir:
         from emrys.db import configure
 
@@ -223,7 +225,7 @@ def serve(persist_dir: str):
 
     from emrys.server import main as server_main
 
-    server_main()
+    server_main(transport=transport, port=port)
 
 
 @main.command()

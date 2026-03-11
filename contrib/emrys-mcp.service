@@ -1,0 +1,15 @@
+[Unit]
+Description=emrys MCP Server (SSE transport)
+After=network.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=%h
+ExecStart=%h/.local/bin/emrys serve --transport sse --port 8901
+Restart=always
+RestartSec=1
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
