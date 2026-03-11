@@ -19,7 +19,7 @@ log = logging.getLogger("cairn")
 from cairn_ai.db import get_db, get_journal_dir, get_persist_dir, load_lifecycle, save_lifecycle
 from cairn_ai.journal import write_journal, read_journal_file, append_handoff_to_journal
 
-mcp = FastMCP("persist")
+mcp = FastMCP("cairn")
 _SERVER_START = datetime.now(timezone.utc)
 
 # ── Configurable thresholds ──

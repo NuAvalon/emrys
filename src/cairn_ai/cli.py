@@ -413,10 +413,16 @@ def search(query: str, limit: int, agent: str | None, topic: str | None,
         from cairn_ai.search import search_fts
         results = search_fts(query, limit=limit)
     else:
-        from cairn_ai.search import search as semantic_search
-        results = semantic_search(
-            query, limit=limit, agent=agent, topic=topic
-        )
+        try:
+            from cairn_ai.search import search as semantic_search
+            results = semantic_search(
+                query, limit=limit, agent=agent, topic=topic
+            )
+        except ImportError:
+            click.echo("Semantic search requires: pip install cairn-ai[vectors]")
+            click.echo("Falling back to keyword search.\n")
+            from cairn_ai.search import search_fts
+            results = search_fts(query, limit=limit)
 
     if not results:
         click.echo("No results found.")
