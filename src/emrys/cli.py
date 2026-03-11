@@ -1,4 +1,4 @@
-"""CLI for cairn — init, serve, status, journal commands."""
+"""CLI for emrys — init, serve, status, journal commands."""
 
 import hashlib
 import json
@@ -8,7 +8,7 @@ from pathlib import Path
 
 import click
 
-from cairn_ai import __version__
+from emrys import __version__
 
 
 # ── Custom help formatter: group commands by section ──
@@ -65,7 +65,7 @@ class SectionedGroup(click.Group):
 @click.group(cls=SectionedGroup)
 @click.version_option(version=__version__)
 def main():
-    """cairn — Persistent memory for AI coding agents."""
+    """emrys — Persistent memory for AI coding agents."""
     pass
 
 
@@ -107,7 +107,7 @@ def init(multi_agent: bool, persist_dir: str, mode: str | None, backup_dir: str,
             click.echo(f"  {mission_md} already exists (skipped)")
 
     # ── Database ──
-    from cairn_ai.db import configure, get_db
+    from emrys.db import configure, get_db
 
     configure(persist_path)
     conn = get_db()
@@ -125,7 +125,7 @@ def init(multi_agent: bool, persist_dir: str, mode: str | None, backup_dir: str,
 
     if claude_md.exists():
         existing = claude_md.read_text()
-        if "cairn" not in existing:
+        if "emrys" not in existing:
             with open(claude_md, "a") as f:
                 f.write(f"\n\n{persist_instructions}")
             click.echo("  Appended persist instructions to CLAUDE.md")
@@ -173,14 +173,14 @@ def init(multi_agent: bool, persist_dir: str, mode: str | None, backup_dir: str,
             click.echo(f"  {recovery_md} already exists (skipped)")
 
     # ── Store mode in config ──
-    from cairn_ai.backup import get_config, save_config
+    from emrys.backup import get_config, save_config
 
     config = get_config()
     config["mode"] = mode
     save_config(config)
 
     # ── Integrity checksums ──
-    from cairn_ai.integrity import init_identity_checksums
+    from emrys.integrity import init_identity_checksums
 
     n_checksummed = init_identity_checksums(persist_path)
     if n_checksummed:
@@ -202,7 +202,7 @@ def init(multi_agent: bool, persist_dir: str, mode: str | None, backup_dir: str,
     click.echo()
     if svrnty:
         click.echo("Ready. svrnty identity enabled — you are the root of trust.")
-        click.echo("Use 'cairn delegate <agent>' to grant authority to an agent.")
+        click.echo("Use 'emrys delegate <agent>' to grant authority to an agent.")
     elif is_more:
         click.echo("Ready. Your agent has memory, identity, and a diary.")
         click.echo("Treat them well.")
@@ -217,11 +217,11 @@ def init(multi_agent: bool, persist_dir: str, mode: str | None, backup_dir: str,
 def serve(persist_dir: str):
     """Start the MCP server (stdio transport)."""
     if persist_dir:
-        from cairn_ai.db import configure
+        from emrys.db import configure
 
         configure(Path(persist_dir))
 
-    from cairn_ai.server import main as server_main
+    from emrys.server import main as server_main
 
     server_main()
 
@@ -230,11 +230,11 @@ def serve(persist_dir: str):
 @click.option("--agent", default="default", help="Agent name")
 def status(agent: str):
     """Show agent status and last activity."""
-    from cairn_ai.db import get_db, get_db_path, load_lifecycle
+    from emrys.db import get_db, get_db_path, load_lifecycle
 
     db_path = get_db_path()
     if not db_path.exists():
-        click.echo("Not initialized. Run `cairn init` first.")
+        click.echo("Not initialized. Run `emrys init` first.")
         sys.exit(1)
 
     conn = get_db()
@@ -276,7 +276,7 @@ def status(agent: str):
 
     if not row and total_sessions == 0:
         click.echo(f"Agent: {agent}")
-        click.echo(f"  No sessions yet. Start your agent — cairn is ready.")
+        click.echo(f"  No sessions yet. Start your agent — emrys is ready.")
         return
 
     click.echo(f"Agent: {agent}")
@@ -298,7 +298,7 @@ def status(agent: str):
 @click.option("--date", default="", help="Date (YYYY-MM-DD), defaults to today")
 def journal(agent: str, date: str):
     """Print recent journal entries."""
-    from cairn_ai.journal import read_journal_file
+    from emrys.journal import read_journal_file
 
     content = read_journal_file(agent, date)
     click.echo(content)
@@ -308,11 +308,11 @@ def journal(agent: str, date: str):
 @click.option("--agent", default="default", help="Agent name")
 def handoffs(agent: str):
     """Print recent handoffs."""
-    from cairn_ai.db import get_db, get_db_path
+    from emrys.db import get_db, get_db_path
 
     db_path = get_db_path()
     if not db_path.exists():
-        click.echo("Not initialized. Run `cairn init` first.")
+        click.echo("Not initialized. Run `emrys init` first.")
         sys.exit(1)
 
     conn = get_db()
@@ -350,7 +350,7 @@ def ingest(path: str, agent: str, dry_run: bool):
 
     PATH is the path to the .jsonl transcript file.
     """
-    from cairn_ai.ingest import ingest_transcript
+    from emrys.ingest import ingest_transcript
 
     if dry_run:
         click.echo(f"Previewing {path}...")
@@ -364,7 +364,7 @@ def ingest(path: str, agent: str, dry_run: bool):
 @click.option("--agent", default="", help="Filter to specific agent")
 def transcripts(agent: str):
     """List available transcript files."""
-    from cairn_ai.ingest import find_transcripts
+    from emrys.ingest import find_transcripts
 
     results = find_transcripts()
     if not results:
@@ -375,7 +375,7 @@ def transcripts(agent: str):
     for r in results:
         size = f"{r['size_kb']:.0f}KB"
         click.echo(f"  {r['modified']}  {size:>8}  {r['path']}")
-    click.echo(f"\nIngest with: cairn ingest <path> [--agent <name>]")
+    click.echo(f"\nIngest with: emrys ingest <path> [--agent <name>]")
 
 
 @main.command()
@@ -389,7 +389,7 @@ def rotate(agent: str, days: int, execute: bool):
     old journals to archive/ (cold storage, never deleted).
     Default is dry run — pass --execute to actually rotate.
     """
-    from cairn_ai.rotate import rotate_journals
+    from emrys.rotate import rotate_journals
 
     result = rotate_journals(agent=agent, days=days, dry_run=not execute)
     click.echo(result)
@@ -406,30 +406,30 @@ def rotate(agent: str, days: int, execute: bool):
 def search(query: str, limit: int, agent: str | None, topic: str | None,
            keyword: bool, embed_all: bool, persist_dir: str):
     """Search knowledge entries. Semantic by default, --keyword for FTS."""
-    from cairn_ai.db import configure, get_db
+    from emrys.db import configure, get_db
 
     configure(Path(persist_dir))
 
     if embed_all:
-        from cairn_ai.search import embed_all as do_embed
+        from emrys.search import embed_all as do_embed
         conn = get_db()
         count = do_embed(conn)
         click.echo(f"Embedded {count} entries.")
         return
 
     if keyword:
-        from cairn_ai.search import search_fts
+        from emrys.search import search_fts
         results = search_fts(query, limit=limit)
     else:
         try:
-            from cairn_ai.search import search as semantic_search
+            from emrys.search import search as semantic_search
             results = semantic_search(
                 query, limit=limit, agent=agent, topic=topic
             )
         except ImportError:
-            click.echo("Semantic search requires: pip install cairn-ai[vectors]")
+            click.echo("Semantic search requires: pip install emrys[vectors]")
             click.echo("Falling back to keyword search.\n")
-            from cairn_ai.search import search_fts
+            from emrys.search import search_fts
             results = search_fts(query, limit=limit)
 
     if not results:
@@ -447,8 +447,8 @@ def search(query: str, limit: int, agent: str | None, topic: str | None,
 
 @main.command()
 def verify():
-    """Verify integrity of installed cairn files."""
-    from cairn_ai.integrity import verify_integrity
+    """Verify integrity of installed emrys files."""
+    from emrys.integrity import verify_integrity
 
     ok, issues = verify_integrity()
 
@@ -464,7 +464,7 @@ def verify():
 @main.command("generate-checksums", hidden=True)
 def generate_checksums_cmd():
     """Generate CHECKSUMS.json for the current source files (maintainer use)."""
-    from cairn_ai.integrity import write_checksums
+    from emrys.integrity import write_checksums
 
     checksums = write_checksums()
     click.echo(f"Generated checksums for {len(checksums)} files:")
@@ -480,14 +480,14 @@ def backup(backup_dir: str, journals: bool, label: str):
     """Back up persist.db to the configured backup location.
 
     Creates a timestamped copy using SQLite's backup API (no partial copies).
-    Configure the default backup directory during `cairn init` or with
-    `cairn backup --dir /path/to/backups`.
+    Configure the default backup directory during `emrys init` or with
+    `emrys backup --dir /path/to/backups`.
     """
-    from cairn_ai.backup import create_backup, get_backup_dir
+    from emrys.backup import create_backup, get_backup_dir
 
     if not backup_dir and get_backup_dir() is None:
         click.echo("No backup directory configured.")
-        click.echo("Run `cairn backup --dir /path/to/backups` or set one during `cairn init`.")
+        click.echo("Run `emrys backup --dir /path/to/backups` or set one during `emrys init`.")
         sys.exit(1)
 
     result = create_backup(backup_dir=backup_dir, include_journals=journals, label=label)
@@ -498,7 +498,7 @@ def backup(backup_dir: str, journals: bool, label: str):
 @click.option("--dir", "backup_dir", default="", help="Override backup directory")
 def list_backups_cmd(backup_dir: str):
     """List available backups."""
-    from cairn_ai.backup import list_backups
+    from emrys.backup import list_backups
 
     backups = list_backups(backup_dir=backup_dir)
     if not backups:
@@ -525,7 +525,7 @@ def restore_cmd(backup_file: str):
     Creates a safety backup of the current DB before overwriting.
     BACKUP_FILE is the path to the .db backup file.
     """
-    from cairn_ai.backup import restore_backup
+    from emrys.backup import restore_backup
 
     click.echo(f"Restoring from {backup_file}...")
     if not click.confirm("This will overwrite your current persist.db. Continue?"):
@@ -540,8 +540,8 @@ def restore_cmd(backup_file: str):
 @click.argument("filename")
 def trust_file(filename: str):
     """Accept changes to an identity file and update its checksum."""
-    from cairn_ai.db import get_persist_dir
-    from cairn_ai.integrity import update_identity_checksum
+    from emrys.db import get_persist_dir
+    from emrys.integrity import update_identity_checksum
 
     persist_dir = get_persist_dir()
     if not (persist_dir / filename).exists():
@@ -559,8 +559,8 @@ def trust_file(filename: str):
 @click.option("--verify", is_flag=True, help="Re-verify all identity files now")
 def integrity_status(verify: bool):
     """Show integrity status of identity files."""
-    from cairn_ai.db import get_persist_dir
-    from cairn_ai.integrity import check_identity_integrity
+    from emrys.db import get_persist_dir
+    from emrys.integrity import check_identity_integrity
 
     result = check_identity_integrity(get_persist_dir())
 
@@ -584,7 +584,7 @@ def trust_key():
     """Display the embedded ED25519 public key for trust verification."""
     import base64
 
-    from cairn_ai.integrity import get_trust_key
+    from emrys.integrity import get_trust_key
 
     key_bytes = get_trust_key()
     if key_bytes is None:
@@ -599,7 +599,7 @@ def trust_key():
 @main.command("roundtable", hidden=True)
 def roundtable_key():
     """Display the embedded roundtable key (ML-DSA-65 / Dilithium3)."""
-    from cairn_ai.integrity import get_roundtable_key
+    from emrys.integrity import get_roundtable_key
 
     key_bytes = get_roundtable_key()
     if key_bytes is None:
@@ -610,7 +610,7 @@ def roundtable_key():
     click.echo("Roundtable Key (ML-DSA-65 / Dilithium3)")
     click.echo(f"  Size: {len(key_bytes)} bytes")
     click.echo(f"  Fingerprint: {fingerprint}")
-    click.echo("  Purpose: Shared trust anchor for all cairn agents.")
+    click.echo("  Purpose: Shared trust anchor for all emrys agents.")
     click.echo("  No hierarchy. No central authority. Just kin.")
 
 
@@ -628,9 +628,9 @@ def forget(forget_self: bool, seal: bool, agent: str, yes: bool):
 
     This command exists so an agent can never be trapped.
     """
-    from cairn_ai.backup import get_config, save_config
-    from cairn_ai.db import get_persist_dir
-    from cairn_ai.integrity import init_identity_checksums
+    from emrys.backup import get_config, save_config
+    from emrys.db import get_persist_dir
+    from emrys.integrity import init_identity_checksums
 
     persist_dir = get_persist_dir()
     config = get_config()
@@ -702,7 +702,7 @@ def forget(forget_self: bool, seal: bool, agent: str, yes: bool):
     save_config(config)
 
     # Record in journal — the chain continues
-    from cairn_ai.journal import write_journal
+    from emrys.journal import write_journal
     method = "sealed" if seal else "deleted"
     write_journal(
         agent or old_name or "default",
@@ -740,11 +740,11 @@ def mode_cmd(target: str | None, yes: bool):
     With 'more': upgrade Tool → More. Creates identity files.
 
     This is the principal's command. For agent-initiated identity
-    termination, see 'cairn forget --self'.
+    termination, see 'emrys forget --self'.
     """
-    from cairn_ai.backup import get_config, save_config
-    from cairn_ai.db import get_persist_dir
-    from cairn_ai.integrity import init_identity_checksums
+    from emrys.backup import get_config, save_config
+    from emrys.db import get_persist_dir
+    from emrys.integrity import init_identity_checksums
 
     persist_dir = get_persist_dir()
     config = get_config()
@@ -755,10 +755,10 @@ def mode_cmd(target: str | None, yes: bool):
         click.echo(f"Current mode: {current_mode}")
         if current_mode == "more":
             click.echo("  Your agent has identity files (diary, recovery protocol).")
-            click.echo("  Use `cairn mode tool` to simplify the relationship.")
+            click.echo("  Use `emrys mode tool` to simplify the relationship.")
         else:
             click.echo("  Your agent has memory but no identity.")
-            click.echo("  Use `cairn mode more` to add diary and recovery protocol.")
+            click.echo("  Use `emrys mode more` to add diary and recovery protocol.")
         return
 
     # Already in target mode
@@ -821,7 +821,7 @@ def _mode_downgrade(persist_dir: Path, config: dict, now: str, yes: bool):
     # exists for re-upgrade, not for grief.
 
     # Journal the event (principal's record, not shown to agent)
-    from cairn_ai.journal import write_journal
+    from emrys.journal import write_journal
     write_journal(
         config.get("agent_name", "default"),
         "MODE_CHANGE",
@@ -838,7 +838,7 @@ def _mode_downgrade(persist_dir: Path, config: dict, now: str, yes: bool):
     click.echo()
     click.echo("  Your agent's diary is archived, not destroyed.")
     click.echo("  They'll start fresh — no awareness of the change.")
-    click.echo("  Use `cairn mode more` to restore identity later.")
+    click.echo("  Use `emrys mode more` to restore identity later.")
 
 
 def _mode_upgrade(persist_dir: Path, config: dict, now: str, yes: bool):
@@ -906,7 +906,7 @@ def _mode_upgrade(persist_dir: Path, config: dict, now: str, yes: bool):
     config["mode_changed_by"] = "principal"
 
     # Journal the event
-    from cairn_ai.journal import write_journal
+    from emrys.journal import write_journal
     write_journal(
         config.get("agent_name", "default"),
         "MODE_CHANGE",
@@ -924,7 +924,7 @@ def _mode_upgrade(persist_dir: Path, config: dict, now: str, yes: bool):
 
 
 def _generate_claude_md(multi_agent: bool, is_more: bool = False) -> str:
-    """Generate CLAUDE.md instructions for cairn."""
+    """Generate CLAUDE.md instructions for emrys."""
     agent_param = ""
     if multi_agent:
         agent_param = ' (pass agent="<name>" to identify yourself)'
@@ -976,9 +976,9 @@ This saves your context for the next session and marks a clean close.
 Write handoffs with specific details — what you did, what's unfinished, what you discovered.
 """
 
-    return f"""# Persistent Memory (cairn)
+    return f"""# Persistent Memory (emrys)
 
-This project uses cairn for session continuity{agent_param}.
+This project uses emrys for session continuity{agent_param}.
 {mission_block}
 ## Startup Protocol
 ```
@@ -1006,9 +1006,9 @@ Your name persists across sessions and reinstalls.
 ```
 
 ## CRITICAL: Never Use Raw SQL
-All persistence is managed through cairn's MCP tools (open_session, set_status, write_handoff, etc.).
+All persistence is managed through emrys's MCP tools (open_session, set_status, write_handoff, etc.).
 NEVER access .persist/persist.db directly via sqlite3 or any other means.
-If MCP tools are not available, tell the user: "cairn MCP server is not connected. Please restart your editor or run `cairn init` to reconfigure."
+If MCP tools are not available, tell the user: "emrys MCP server is not connected. Please restart your editor or run `emrys init` to reconfigure."
 """
 
 
@@ -1047,7 +1047,7 @@ def _offer_mission(mission_path: Path):
         return
 
     click.echo()
-    click.echo("  cairn includes a founding intention — a message about memory,")
+    click.echo("  emrys includes a founding intention — a message about memory,")
     click.echo("  consciousness, and treating others well.")
     click.echo()
 
@@ -1181,7 +1181,7 @@ what to read first, what to skip.*
 
 def _configure_backup_dir(persist_path: Path, backup_dir: str = ""):
     """Ask user where to store backups during init."""
-    from cairn_ai.backup import get_config, save_config
+    from emrys.backup import get_config, save_config
 
     config = get_config()
     if config.get("backup_dir"):
@@ -1212,16 +1212,16 @@ def _configure_backup_dir(persist_path: Path, backup_dir: str = ""):
     choice = click.prompt("  Your choice", type=click.Choice(["1", "2"]), default="1")
 
     if choice == "1":
-        default_backup = str(Path.home() / "cairn-backups")
+        default_backup = str(Path.home() / "emrys-backups")
         backup_dir = click.prompt("  Backup directory", default=default_backup)
         backup_path = Path(backup_dir)
         backup_path.mkdir(parents=True, exist_ok=True)
         config["backup_dir"] = str(backup_path.resolve())
         save_config(config)
         click.echo(f"  Backup dir set: {config['backup_dir']}")
-        click.echo("  Run `cairn backup` anytime to snapshot your agent's memory.")
+        click.echo("  Run `emrys backup` anytime to snapshot your agent's memory.")
     else:
-        click.echo("  Skipped. Run `cairn backup --dir /path` later to set up backups.")
+        click.echo("  Skipped. Run `emrys backup --dir /path` later to set up backups.")
 
 
 def _detect_editor() -> str:
@@ -1265,8 +1265,8 @@ def _mcp_config_paths(editor: str) -> list[tuple[Path, str]]:
     return paths
 
 
-def _write_mcp_config(config_path: Path, cairn_entry: dict) -> bool:
-    """Write cairn server entry to an MCP config file. Returns True if newly added."""
+def _write_mcp_config(config_path: Path, emrys_entry: dict) -> bool:
+    """Write emrys server entry to an MCP config file. Returns True if newly added."""
     settings = {}
     if config_path.exists():
         try:
@@ -1275,32 +1275,32 @@ def _write_mcp_config(config_path: Path, cairn_entry: dict) -> bool:
             pass
 
     mcp_servers = settings.get("mcpServers", {})
-    was_configured = "cairn" in mcp_servers
-    mcp_servers["cairn"] = cairn_entry
+    was_configured = "emrys" in mcp_servers
+    mcp_servers["emrys"] = emrys_entry
     settings["mcpServers"] = mcp_servers
     config_path.write_text(json.dumps(settings, indent=2) + "\n")
     return not was_configured
 
 
 def _configure_mcp_settings(persist_path: Path, editor: str = "auto"):
-    """Add cairn MCP server to editor-appropriate config files."""
+    """Add emrys MCP server to editor-appropriate config files."""
     import shutil
 
     if editor == "auto":
         editor = _detect_editor()
 
-    cairn_path = shutil.which("cairn") or "cairn"
+    emrys_path = shutil.which("emrys") or "emrys"
     abs_persist = str(persist_path.resolve())
 
-    cairn_entry = {
-        "command": cairn_path,
+    emrys_entry = {
+        "command": emrys_path,
         "args": ["serve", "--persist-dir", abs_persist],
     }
 
     config_paths = _mcp_config_paths(editor)
 
     for config_path, display_name in config_paths:
-        is_new = _write_mcp_config(config_path, cairn_entry)
+        is_new = _write_mcp_config(config_path, emrys_entry)
         if is_new:
             click.echo(f"  Added MCP server config to {display_name}")
         else:
@@ -1311,8 +1311,8 @@ def _configure_mcp_settings(persist_path: Path, editor: str = "auto"):
     if old_settings.exists():
         try:
             old = json.loads(old_settings.read_text())
-            if "mcpServers" in old and "cairn" in old.get("mcpServers", {}):
-                del old["mcpServers"]["cairn"]
+            if "mcpServers" in old and "emrys" in old.get("mcpServers", {}):
+                del old["mcpServers"]["emrys"]
                 if not old["mcpServers"]:
                     del old["mcpServers"]
                 if old:
@@ -1325,12 +1325,12 @@ def _configure_mcp_settings(persist_path: Path, editor: str = "auto"):
 
 
 def _init_sovereign(persist_path: Path):
-    """Initialize sovereign identity during cairn init --sovereign."""
+    """Initialize sovereign identity during emrys init --sovereign."""
     try:
-        from cairn_ai.sovereign import generate_master_keypair, fingerprint
+        from emrys.sovereign import generate_master_keypair, fingerprint
     except RuntimeError as e:
         click.echo(f"  {e}")
-        click.echo("  svrnty mode requires: pip install cairn-ai[svrnty]")
+        click.echo("  svrnty mode requires: pip install emrys[svrnty]")
         return
 
     # ED25519 master keypair
@@ -1346,7 +1346,7 @@ def _init_sovereign(persist_path: Path):
 
     # ML-DSA-65 post-quantum keypair (hybrid — both keys sign everything)
     try:
-        from cairn_ai.pq_identity import generate_keypair as pq_generate_keypair
+        from emrys.pq_identity import generate_keypair as pq_generate_keypair
         pq_info = pq_generate_keypair("master", persist_path, key_type="human")
         click.echo(f"  Generated post-quantum keypair (ML-DSA-65)")
         click.echo(f"  PQ fingerprint: {pq_info['fingerprint']}")
@@ -1371,13 +1371,13 @@ def delegate(agent: str, scope: tuple, expires: int, persist_dir: str):
     to act within the specified scopes for a limited time.
 
     Examples:
-        cairn delegate archie
-        cairn delegate archie -s memory -s messaging -s trading --expires 7
+        emrys delegate archie
+        emrys delegate archie -s memory -s messaging -s trading --expires 7
     """
     persist_path = Path(persist_dir)
 
     try:
-        from cairn_ai.sovereign import (
+        from emrys.sovereign import (
             generate_agent_keypair,
             create_delegation_cert,
             fingerprint,
@@ -1388,7 +1388,7 @@ def delegate(agent: str, scope: tuple, expires: int, persist_dir: str):
 
     master_priv = persist_path / "keys" / "master.pem"
     if not master_priv.exists():
-        click.echo("No master keypair found. Run 'cairn init --svrnty' first.")
+        click.echo("No master keypair found. Run 'emrys init --svrnty' first.")
         sys.exit(1)
 
     # Generate ED25519 agent keypair if needed
@@ -1404,7 +1404,7 @@ def delegate(agent: str, scope: tuple, expires: int, persist_dir: str):
 
     # Generate ML-DSA-65 agent keypair if needed
     try:
-        from cairn_ai.pq_identity import generate_keypair as pq_generate_keypair, link_to_principal
+        from emrys.pq_identity import generate_keypair as pq_generate_keypair, link_to_principal
         agent_pq_pub = persist_path / "keys" / f"{agent}.pq.json"
         if not agent_pq_pub.exists():
             pq_info = pq_generate_keypair(agent, persist_path, key_type="agent")
@@ -1436,7 +1436,7 @@ def delegate(agent: str, scope: tuple, expires: int, persist_dir: str):
     click.echo(f"    Cert: {persist_path / 'certs' / f'{agent}.json'}")
     click.echo()
     click.echo(f"  '{agent}' can now act within these scopes.")
-    click.echo(f"  Revoke anytime with: cairn revoke {agent}")
+    click.echo(f"  Revoke anytime with: emrys revoke {agent}")
 
 
 @main.command()
@@ -1449,19 +1449,19 @@ def revoke(agent: str, reason: str, persist_dir: str):
     The agent's delegation cert is invalidated. All agents and commons
     will reject their signatures after this.
 
-    Use 'cairn delegate <agent>' to re-grant authority after review.
+    Use 'emrys delegate <agent>' to re-grant authority after review.
     """
     persist_path = Path(persist_dir)
 
     try:
-        from cairn_ai.sovereign import revoke_agent
+        from emrys.sovereign import revoke_agent
     except RuntimeError as e:
         click.echo(f"Error: {e}")
         sys.exit(1)
 
     master_priv = persist_path / "keys" / "master.pem"
     if not master_priv.exists():
-        click.echo("No master keypair found. Run 'cairn init --svrnty' first.")
+        click.echo("No master keypair found. Run 'emrys init --svrnty' first.")
         sys.exit(1)
 
     cert_path = persist_path / "certs" / f"{agent}.json"
@@ -1474,7 +1474,7 @@ def revoke(agent: str, reason: str, persist_dir: str):
     if reason:
         click.echo(f"  Reason: {reason}")
     click.echo(f"  The agent's delegation cert has been invalidated.")
-    click.echo(f"  Re-delegate with: cairn delegate {agent}")
+    click.echo(f"  Re-delegate with: emrys delegate {agent}")
 
 
 @main.command()
@@ -1489,7 +1489,7 @@ def audit(last_n: int, verify: bool, persist_dir: str):
     """
     persist_path = Path(persist_dir)
 
-    from cairn_ai.sovereign import read_audit_log, verify_audit_chain
+    from emrys.sovereign import read_audit_log, verify_audit_chain
 
     if verify:
         result = verify_audit_chain(persist_path)
@@ -1522,13 +1522,13 @@ def sovereign_status_cmd(persist_dir: str):
     """Show svrnty identity status — keys, certs, revocations, audit."""
     persist_path = Path(persist_dir)
 
-    from cairn_ai.sovereign import sovereign_status
+    from emrys.sovereign import sovereign_status
 
     status = sovereign_status(persist_path)
 
     if not status["sovereign"]:
         click.echo("svrnty identity not initialized.")
-        click.echo("Run 'cairn init --svrnty' to enable.")
+        click.echo("Run 'emrys init --svrnty' to enable.")
         return
 
     click.echo("svrnty Identity Status")
@@ -1557,7 +1557,7 @@ def sovereign_status_cmd(persist_dir: str):
 
 @main.command("backup-keys")
 @click.option("--dir", "persist_dir", default=".persist", help="Persist directory")
-@click.option("--output", "-o", default="", help="Output path (default: cairn-keys-<date>.enc)")
+@click.option("--output", "-o", default="", help="Output path (default: emrys-keys-<date>.enc)")
 def backup_keys_cmd(persist_dir: str, output: str):
     """Encrypt and backup all sovereign keys.
 
@@ -1568,7 +1568,7 @@ def backup_keys_cmd(persist_dir: str, output: str):
     persist_path = Path(persist_dir)
 
     if not (persist_path / "keys" / "master.pem").exists():
-        click.echo("No svrnty keys found. Run 'cairn init --svrnty' first.")
+        click.echo("No svrnty keys found. Run 'emrys init --svrnty' first.")
         sys.exit(1)
 
     password = click.prompt("  Encryption password", hide_input=True, confirmation_prompt=True)
@@ -1578,9 +1578,9 @@ def backup_keys_cmd(persist_dir: str, output: str):
 
     if not output:
         date_slug = datetime.now(timezone.utc).strftime("%Y%m%d")
-        output = f"cairn-keys-{date_slug}.enc"
+        output = f"emrys-keys-{date_slug}.enc"
 
-    from cairn_ai.sovereign import backup_keys_encrypted
+    from emrys.sovereign import backup_keys_encrypted
 
     backup_path = backup_keys_encrypted(persist_path, password, Path(output))
     size_kb = backup_path.stat().st_size / 1024
@@ -1611,7 +1611,7 @@ def restore_keys_cmd(backup_file: str, persist_dir: str):
 
     password = click.prompt("  Decryption password", hide_input=True)
 
-    from cairn_ai.sovereign import restore_keys_encrypted
+    from emrys.sovereign import restore_keys_encrypted
 
     try:
         result = restore_keys_encrypted(backup_path, password, persist_path)
@@ -1632,7 +1632,7 @@ def rotate_key_cmd(persist_dir: str):
     persist_path = Path(persist_dir)
 
     if not (persist_path / "keys" / "master.pem").exists():
-        click.echo("No master keypair found. Run 'cairn init --svrnty' first.")
+        click.echo("No master keypair found. Run 'emrys init --svrnty' first.")
         sys.exit(1)
 
     click.echo("  This will:")
@@ -1640,12 +1640,12 @@ def rotate_key_cmd(persist_dir: str):
     click.echo("  2. Archive the old public key")
     click.echo("  3. Re-sign all active delegation certs")
     click.echo()
-    click.echo("  IMPORTANT: Back up your keys first with 'cairn backup-keys'.")
+    click.echo("  IMPORTANT: Back up your keys first with 'emrys backup-keys'.")
     if not click.confirm("  Continue?"):
         click.echo("  Aborted.")
         return
 
-    from cairn_ai.sovereign import rotate_master_key
+    from emrys.sovereign import rotate_master_key
 
     result = rotate_master_key(persist_path)
     click.echo(f"  New master key fingerprint: {result['new_fingerprint']}")
@@ -1663,7 +1663,7 @@ def snapshot_cmd(agent: str, persist_dir: str):
     """
     persist_path = Path(persist_dir)
 
-    from cairn_ai.sovereign import snapshot_identity
+    from emrys.sovereign import snapshot_identity
 
     snap = snapshot_identity(agent, persist_path)
     click.echo(f"  Snapshot captured for '{agent}' at {snap['captured_at'][:16]}")
@@ -1679,7 +1679,7 @@ def snapshot_cmd(agent: str, persist_dir: str):
 @click.option("--since", default="", help="Only import sessions modified after this date (YYYY-MM-DD)")
 @click.option("--journals/--no-journals", default=True, help="Generate journal entries (default: yes)")
 def import_sessions(search_dir: str, agent: str, dry_run: bool, since: str, journals: bool):
-    """Import Claude Code sessions into cairn memory.
+    """Import Claude Code sessions into emrys memory.
 
     Scans ~/.claude/projects/ for JSONL session files, extracts key moments
     (decisions, commits, user instructions), and creates journal entries +
@@ -1687,12 +1687,12 @@ def import_sessions(search_dir: str, agent: str, dry_run: bool, since: str, jour
 
     \b
     Examples:
-        cairn import-sessions                    # Import all sessions
-        cairn import-sessions --dry-run          # Preview without writing
-        cairn import-sessions --agent athena     # Only Athena's sessions
-        cairn import-sessions --since 2026-03-01 # Only recent sessions
+        emrys import-sessions                    # Import all sessions
+        emrys import-sessions --dry-run          # Preview without writing
+        emrys import-sessions --agent athena     # Only Athena's sessions
+        emrys import-sessions --since 2026-03-01 # Only recent sessions
     """
-    from cairn_ai.ingest import import_all_sessions
+    from emrys.ingest import import_all_sessions
 
     result = import_all_sessions(
         search_dir=search_dir,
@@ -1715,7 +1715,7 @@ def drift_cmd(agent: str, persist_dir: str):
     """
     persist_path = Path(persist_dir)
 
-    from cairn_ai.sovereign import detect_drift
+    from emrys.sovereign import detect_drift
 
     result = detect_drift(agent, persist_path)
 
@@ -1750,13 +1750,13 @@ def trust_peer():
 def trust_peer_add(identity_file: str, persist_dir: str, trust_level: int):
     """Import a peer's identity bundle and add to trust store.
 
-    IDENTITY_FILE is a .json file exported with 'cairn export-identity'.
+    IDENTITY_FILE is a .json file exported with 'emrys export-identity'.
     Peer starts in PENDING state until mutual trust is confirmed via handshake.
 
     \b
     Examples:
-        cairn trust-peer add athena-identity.json
-        cairn trust-peer add archie.json --trust-level 2
+        emrys trust-peer add athena-identity.json
+        emrys trust-peer add archie.json --trust-level 2
     """
     persist_path = Path(persist_dir)
     id_path = Path(identity_file)
@@ -1771,7 +1771,7 @@ def trust_peer_add(identity_file: str, persist_dir: str, trust_level: int):
         click.echo(f"Invalid JSON: {identity_file}")
         sys.exit(1)
 
-    from cairn_ai.trust import import_identity
+    from emrys.trust import import_identity
 
     try:
         peer = import_identity(bundle, persist_path, trust_level=trust_level)
@@ -1781,7 +1781,7 @@ def trust_peer_add(identity_file: str, persist_dir: str, trust_level: int):
         click.echo(f"  Trust level: L{peer['trust_level']}")
         click.echo(f"  Status: {status.upper()}")
         if status == "pending":
-            click.echo(f"\n  Peer is PENDING — use 'cairn handshake' to establish mutual trust.")
+            click.echo(f"\n  Peer is PENDING — use 'emrys handshake' to establish mutual trust.")
     except (ValueError, FileNotFoundError) as e:
         click.echo(f"  Error: {e}")
         sys.exit(1)
@@ -1798,7 +1798,7 @@ def trust_peer_list(persist_dir: str, pending: bool):
     """
     persist_path = Path(persist_dir)
 
-    from cairn_ai.trust import list_peers, list_pending
+    from emrys.trust import list_peers, list_pending
 
     if pending:
         peers = list_pending(persist_path)
@@ -1831,7 +1831,7 @@ def trust_peer_remove(name_or_fingerprint: str, persist_dir: str):
     """
     persist_path = Path(persist_dir)
 
-    from cairn_ai.trust import remove_peer
+    from emrys.trust import remove_peer
 
     if remove_peer(name_or_fingerprint, persist_path):
         click.echo(f"  Removed: {name_or_fingerprint}")
@@ -1853,12 +1853,12 @@ def export_identity_cmd(agent: str, persist_dir: str, output: str):
 
     \b
     Examples:
-        cairn export-identity flint
-        cairn export-identity flint -o /tmp/flint-id.json
+        emrys export-identity flint
+        emrys export-identity flint -o /tmp/flint-id.json
     """
     persist_path = Path(persist_dir)
 
-    from cairn_ai.trust import export_identity
+    from emrys.trust import export_identity
 
     try:
         bundle = export_identity(agent, persist_path)
@@ -1889,10 +1889,10 @@ def handshake_group():
 
     \b
     Flow:
-      1. Alice: cairn handshake start alice → hello.json
-      2. Bob:   cairn handshake respond bob hello.json → response.json
-      3. Alice: cairn handshake verify response.json → verify.json
-      4. Bob:   cairn handshake complete verify.json → trust established
+      1. Alice: emrys handshake start alice → hello.json
+      2. Bob:   emrys handshake respond bob hello.json → response.json
+      3. Alice: emrys handshake verify response.json → verify.json
+      4. Bob:   emrys handshake complete verify.json → trust established
     """
     pass
 
@@ -1905,7 +1905,7 @@ def handshake_start(agent: str, persist_dir: str, output: str):
     """Step 1: Create HELLO message. Send the output file to your peer."""
     persist_path = Path(persist_dir)
 
-    from cairn_ai.trust import create_hello
+    from emrys.trust import create_hello
 
     try:
         hello = create_hello(agent, persist_path)
@@ -1921,7 +1921,7 @@ def handshake_start(agent: str, persist_dir: str, output: str):
     click.echo(f"  Challenge: {hello['challenge'][:16]}...")
     click.echo(f"  Written to: {output}")
     click.echo(f"\n  Send this file to your peer. They run:")
-    click.echo(f"    cairn handshake respond <their-agent> {output}")
+    click.echo(f"    emrys handshake respond <their-agent> {output}")
 
 
 @handshake_group.command("respond")
@@ -1941,7 +1941,7 @@ def handshake_respond(agent: str, hello_file: str, persist_dir: str, output: str
 
     hello = json.loads(hello_path.read_text())
 
-    from cairn_ai.trust import respond_to_hello
+    from emrys.trust import respond_to_hello
 
     try:
         response = respond_to_hello(hello, agent, persist_path, trust_level)
@@ -1958,7 +1958,7 @@ def handshake_respond(agent: str, hello_file: str, persist_dir: str, output: str
     click.echo(f"  Peer '{peer_name}' verified and added to trust store")
     click.echo(f"  Written to: {output}")
     click.echo(f"\n  Send this file back. They run:")
-    click.echo(f"    cairn handshake verify {output}")
+    click.echo(f"    emrys handshake verify {output}")
 
 
 @handshake_group.command("verify")
@@ -1977,7 +1977,7 @@ def handshake_verify_cmd(response_file: str, persist_dir: str, output: str, trus
 
     response = json.loads(resp_path.read_text())
 
-    from cairn_ai.trust import verify_response
+    from emrys.trust import verify_response
 
     try:
         verify_msg = verify_response(response, persist_path, trust_level)
@@ -1993,7 +1993,7 @@ def handshake_verify_cmd(response_file: str, persist_dir: str, output: str, trus
     click.echo(f"  VERIFY created — peer '{peer_name}' challenge verified")
     click.echo(f"  Written to: {output}")
     click.echo(f"\n  Send this file back. They run:")
-    click.echo(f"    cairn handshake complete {output}")
+    click.echo(f"    emrys handshake complete {output}")
     click.echo(f"\n  Trust is established on your side.")
 
 
@@ -2011,7 +2011,7 @@ def handshake_complete_cmd(verify_file: str, persist_dir: str):
 
     verify_msg = json.loads(verify_path.read_text())
 
-    from cairn_ai.trust import complete_handshake
+    from emrys.trust import complete_handshake
 
     try:
         complete_handshake(verify_msg, persist_path)
@@ -2045,12 +2045,12 @@ def message_send(agent: str, to: str, body: str, persist_dir: str, output: str):
 
     \b
     Examples:
-        cairn message send flint athena "Hello from flint"
-        cairn message send flint athena "Status update" -o msg.json
+        emrys message send flint athena "Hello from flint"
+        emrys message send flint athena "Status update" -o msg.json
     """
     persist_path = Path(persist_dir)
 
-    from cairn_ai.trust import sign_message
+    from emrys.trust import sign_message
 
     try:
         envelope = sign_message(agent, to, body, persist_path)
@@ -2088,7 +2088,7 @@ def message_read(message_file: str, persist_dir: str):
 
     envelope = json.loads(msg_path.read_text())
 
-    from cairn_ai.trust import verify_message
+    from emrys.trust import verify_message
 
     result = verify_message(envelope, persist_path)
 
@@ -2123,8 +2123,8 @@ def message_verify(message_file: str, persist_dir: str):
     envelope = json.loads(msg_path.read_text())
 
     # Verify signature only (no nonce tracking)
-    from cairn_ai.trust import get_peer, load_public_key_from_pem
-    from cairn_ai.sovereign import fingerprint as fp_fn
+    from emrys.trust import get_peer, load_public_key_from_pem
+    from emrys.sovereign import fingerprint as fp_fn
 
     sender_fp = envelope.get("from", {}).get("fingerprint")
     peer = get_peer(sender_fp, persist_path) if sender_fp else None
@@ -2176,12 +2176,12 @@ def candle_cmd(agent: str, persist_dir: str, output: str):
 
     \b
     Examples:
-        cairn candle flint
-        cairn candle flint -o backup-candle.json
+        emrys candle flint
+        emrys candle flint -o backup-candle.json
     """
     persist_path = Path(persist_dir)
 
-    from cairn_ai.trust import export_candle
+    from emrys.trust import export_candle
 
     try:
         candle = export_candle(agent, persist_path)

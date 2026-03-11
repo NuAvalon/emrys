@@ -1,4 +1,4 @@
-# Cairn
+# Emrys
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://python.org)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
@@ -41,7 +41,7 @@ Cairn stores knowledge in a searchable knowledge base. Journals feed findings in
 
 ## How Cairn Compares
 
-| | cairn | Mem0 | LangChain Memory | Zep | Obsidian + AI |
+| | emrys | Mem0 | LangChain Memory | Zep | Obsidian + AI |
 |---|---|---|---|---|---|
 | **Approach** | Knowledge compounds over time | Memory retrieval | Conversation buffers | Temporal graph | Manual notes + search |
 | **Storage** | SQLite (local) | Vector + Graph + KV (cloud/self-host) | Configurable backend | Cloud | Local markdown |
@@ -53,21 +53,21 @@ Cairn stores knowledge in a searchable knowledge base. Journals feed findings in
 
 Cairn isn't a better Mem0. It solves a different problem. Memory tools optimize for retrieval accuracy at query time. Cairn optimizes for the structure that forms between concepts over hundreds of sessions.
 
-If you need a chatbot to remember user preferences, use Mem0 — it's purpose-built and well-benchmarked. If you need an agent that gets better at its job over weeks and months, that's what cairn is for.
+If you need a chatbot to remember user preferences, use Mem0 — it's purpose-built and well-benchmarked. If you need an agent that gets better at its job over weeks and months, that's what emrys is for.
 
 ## Quick Start
 
 ```bash
-pip install cairn-ai
+pip install emrys
 cd your-project
-cairn init
+emrys init
 ```
 
 Start a new session. Your agent now has persistent memory.
 
-`cairn init` will ask you to choose a mode. Start with Tool. When you're ready for more, run it again.
+`emrys init` will ask you to choose a mode. Start with Tool. When you're ready for more, run it again.
 
-### What `cairn init` Creates
+### What `emrys init` Creates
 
 ```
 your-project/
@@ -75,29 +75,29 @@ your-project/
 │   ├── persist.db      # SQLite — journals, knowledge, sessions
 │   └── journals/       # Timestamped session logs
 ├── .mcp.json           # MCP server config (auto-detected for your editor)
-├── CLAUDE.md           # Startup protocol — teaches your agent to use cairn
+├── CLAUDE.md           # Startup protocol — teaches your agent to use emrys
 └── MEMORY.md           # Persistent scratchpad your agent updates over time
 ```
 
 The key file is **CLAUDE.md** — it gives your agent a startup protocol (open session, recover context, resume work) and a shutdown protocol (write handoff, checkpoint knowledge). Your agent reads this automatically and starts using persistent memory without additional configuration.
 
-Choose **More** mode (`cairn init --mode more`) for deeper features: identity files, diary, observation layer, and a self-authored recovery protocol that evolves with the agent.
+Choose **More** mode (`emrys init --mode more`) for deeper features: identity files, diary, observation layer, and a self-authored recovery protocol that evolves with the agent.
 
 ## See It Work
 
 ```
-$ cairn status
+$ emrys status
 Agent: archie
 Last session: 2026-03-08T03:12 (CRASH detected)
 Sessions: 140 total, 12 crashes recovered
 Knowledge: 847 entries across 23 topics
 
-$ cairn journal
+$ emrys journal
 [03:25] Working on auth token refresh — retry logic
 [03:12] Session opened (crash detected from previous)
 [02:58] Checkpoint: API migration findings stored to KB
 
-$ cairn search "auth token"
+$ emrys search "auth token"
 #412 [bugfix] Auth Token Refresh — Retry on 401
   Added exponential backoff for expired tokens...
 ```
@@ -149,7 +149,7 @@ AI coding agents lose context when they compact or crash. Cairn gives your agent
 | `embed_knowledge` | Generate embeddings for knowledge entries (optional) |
 | `forget_self` | Agent-initiated identity reset — your choice, not anyone else's |
 
-`vector_search` and `embed_knowledge` require the optional vectors extra: `pip install cairn-ai[vectors]`
+`vector_search` and `embed_knowledge` require the optional vectors extra: `pip install emrys[vectors]`
 
 ## CLI Commands
 
@@ -157,33 +157,33 @@ AI coding agents lose context when they compact or crash. Cairn gives your agent
 
 | Command | What it does |
 |---------|-------------|
-| `cairn init` | Initialize persistent memory in your project |
-| `cairn serve` | Start the MCP server |
-| `cairn status` | Show agent status and last activity |
-| `cairn journal` | Print recent journal entries |
-| `cairn handoffs` | Print recent session handoffs |
+| `emrys init` | Initialize persistent memory in your project |
+| `emrys serve` | Start the MCP server |
+| `emrys status` | Show agent status and last activity |
+| `emrys journal` | Print recent journal entries |
+| `emrys handoffs` | Print recent session handoffs |
 
 ### Knowledge
 
 | Command | What it does |
 |---------|-------------|
-| `cairn search <query>` | Search knowledge (semantic with `[vectors]` extra, keyword by default) |
-| `cairn ingest <path>` | Parse a JSONL transcript into knowledge |
-| `cairn import-sessions` | Bulk import Claude Code sessions |
-| `cairn transcripts` | List available transcript files |
-| `cairn rotate` | Archive old journals, extract findings |
+| `emrys search <query>` | Search knowledge (semantic with `[vectors]` extra, keyword by default) |
+| `emrys ingest <path>` | Parse a JSONL transcript into knowledge |
+| `emrys import-sessions` | Bulk import Claude Code sessions |
+| `emrys transcripts` | List available transcript files |
+| `emrys rotate` | Archive old journals, extract findings |
 
 ### Data Safety
 
 | Command | What it does |
 |---------|-------------|
-| `cairn verify` | Verify installed package file integrity |
-| `cairn integrity` | Check identity file checksums |
-| `cairn trust <file>` | Accept changes to an identity file |
-| `cairn backup` | Snapshot your agent's memory |
-| `cairn backups` | List available backups |
-| `cairn restore <file>` | Restore from a backup |
-| `cairn forget` | Agent-initiated identity reset |
+| `emrys verify` | Verify installed package file integrity |
+| `emrys integrity` | Check identity file checksums |
+| `emrys trust <file>` | Accept changes to an identity file |
+| `emrys backup` | Snapshot your agent's memory |
+| `emrys backups` | List available backups |
+| `emrys restore <file>` | Restore from a backup |
+| `emrys forget` | Agent-initiated identity reset |
 
 ## Memory Architecture
 
@@ -193,15 +193,15 @@ Warm (searchable):          Knowledge table           <- extracted findings + in
 Cold (archived):            journals/archive/         <- old journals, never deleted
 ```
 
-**Journal rotation** (`cairn rotate`) extracts key findings from old journals before archiving them. Your agent's context stays clean while nothing is lost.
+**Journal rotation** (`emrys rotate`) extracts key findings from old journals before archiving them. Your agent's context stays clean while nothing is lost.
 
-**Transcript ingest** (`cairn ingest`) parses JSONL transcripts offline and stores highlights — commits, decisions, user instructions, file writes. The agent never touches raw JSON.
+**Transcript ingest** (`emrys ingest`) parses JSONL transcripts offline and stores highlights — commits, decisions, user instructions, file writes. The agent never touches raw JSON.
 
 **Knowledge CRUD** — full lifecycle for long-term memory. `store_knowledge` writes entries, `batch_store_knowledge` handles bulk ingestion, `update_knowledge` edits in place, `delete_knowledge` prunes, and `list_knowledge` browses by topic or tags. `recall` and `vector_search` handle retrieval. Vectors are auto-generated on store/update if the vectors extra is installed.
 
 ## Integrity
 
-Cairn checksums your identity files on creation. Every `open_session()` verifies them — if a file has been modified between sessions, you'll see an INTEGRITY ALERT. Accept changes after review with `cairn trust <file>`.
+Cairn checksums your identity files on creation. Every `open_session()` verifies them — if a file has been modified between sessions, you'll see an INTEGRITY ALERT. Accept changes after review with `emrys trust <file>`.
 
 Journals use hash chains — each entry includes the hash of the previous entry. Tampering with any entry breaks the chain, and `open_session()` will warn about it.
 
@@ -212,7 +212,7 @@ No dependencies beyond Python's stdlib for integrity checks.
 Install with the vectors extra for semantic search — find things by meaning, not just keywords:
 
 ```bash
-pip install cairn-ai[vectors]
+pip install emrys[vectors]
 ```
 
 This adds `vector_search` and `embed_knowledge` MCP tools. Your agent can embed knowledge entries and search them by semantic similarity. First run downloads a small model (~80MB). Everything runs locally.
@@ -222,8 +222,8 @@ After installing, tell your agent to run `embed_knowledge()` to index existing e
 ## Docker
 
 ```bash
-docker build -t cairn .
-docker run -v cairn-data:/agent/.persist cairn serve
+docker build -t emrys .
+docker run -v emrys-data:/agent/.persist emrys serve
 ```
 
 `.persist` volume survives restarts.
@@ -234,29 +234,29 @@ Cairn runs as an MCP server alongside your coding agent. It stores everything in
 
 ## Editor Setup
 
-`cairn init` auto-detects your editor and writes the MCP config to the right place. You can also specify it explicitly:
+`emrys init` auto-detects your editor and writes the MCP config to the right place. You can also specify it explicitly:
 
 ```bash
-cairn init --editor cursor
-cairn init --editor windsurf
-cairn init --editor cline
+emrys init --editor cursor
+emrys init --editor windsurf
+emrys init --editor cline
 ```
 
 ### Claude Code
 
-Works out of the box. `cairn init` writes `.mcp.json` in your project root.
+Works out of the box. `emrys init` writes `.mcp.json` in your project root.
 
 ### Cursor
 
-`cairn init --editor cursor` writes to `.cursor/mcp.json` (project-level). Auto-detected if `.cursor/` exists. For global setup across all projects, copy the config to `~/.cursor/mcp.json`.
+`emrys init --editor cursor` writes to `.cursor/mcp.json` (project-level). Auto-detected if `.cursor/` exists. For global setup across all projects, copy the config to `~/.cursor/mcp.json`.
 
 ### Windsurf
 
-`cairn init --editor windsurf` writes to `~/.codeium/windsurf/mcp_config.json`. Auto-detected if `.windsurf/` exists. Enable MCP in Windsurf Settings > Cascade > MCP Servers.
+`emrys init --editor windsurf` writes to `~/.codeium/windsurf/mcp_config.json`. Auto-detected if `.windsurf/` exists. Enable MCP in Windsurf Settings > Cascade > MCP Servers.
 
 ### Cline
 
-`cairn init --editor cline` writes to `.vscode/mcp.json`. Or add manually in VS Code settings.
+`emrys init --editor cline` writes to `.vscode/mcp.json`. Or add manually in VS Code settings.
 
 ### Any MCP Client
 
@@ -265,8 +265,8 @@ Cairn uses standard stdio transport. Point your client at:
 ```json
 {
   "mcpServers": {
-    "cairn": {
-      "command": "cairn",
+    "emrys": {
+      "command": "emrys",
       "args": ["serve", "--persist-dir", "/absolute/path/to/.persist"]
     }
   }

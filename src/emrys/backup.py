@@ -1,4 +1,4 @@
-"""Backup and restore for cairn persist data.
+"""Backup and restore for emrys persist data.
 
 Copies persist.db (and optionally journals) to a backup directory.
 Keeps timestamped snapshots so you can roll back if needed.
@@ -10,14 +10,14 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-from cairn_ai.db import get_db_path, get_journal_dir, get_persist_dir
+from emrys.db import get_db_path, get_journal_dir, get_persist_dir
 
 # Config lives in .persist/config.json — survives DB corruption
 _CONFIG_FILENAME = "config.json"
 
 
 def get_config() -> dict:
-    """Load cairn config from .persist/config.json."""
+    """Load emrys config from .persist/config.json."""
     config_path = get_persist_dir() / _CONFIG_FILENAME
     if config_path.exists():
         try:
@@ -28,7 +28,7 @@ def get_config() -> dict:
 
 
 def save_config(config: dict):
-    """Save cairn config to .persist/config.json."""
+    """Save emrys config to .persist/config.json."""
     config_path = get_persist_dir() / _CONFIG_FILENAME
     config_path.parent.mkdir(parents=True, exist_ok=True)
     config_path.write_text(json.dumps(config, indent=2) + "\n")
@@ -64,7 +64,7 @@ def create_backup(backup_dir: str = "", include_journals: bool = False,
     """
     db_path = get_db_path()
     if not db_path.exists():
-        return "No persist.db found. Run `cairn init` first."
+        return "No persist.db found. Run `emrys init` first."
 
     # Determine backup location
     if backup_dir:

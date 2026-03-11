@@ -1,4 +1,4 @@
-"""Cryptographic integrity verification for cairn.
+"""Cryptographic integrity verification for emrys.
 
 Two systems:
 1. File checksums — verify installed files match published hashes
@@ -123,7 +123,7 @@ def check_identity_integrity(persist_dir: Path) -> dict:
                 alerts.append(
                     f"INTEGRITY ALERT: {filename} has been modified since last session. "
                     f"SHA-256 mismatch. Review the file and run "
-                    f"'cairn trust {filename}' to accept changes."
+                    f"'emrys trust {filename}' to accept changes."
                 )
 
     # Check signature if present
@@ -141,7 +141,7 @@ def check_identity_integrity(persist_dir: Path) -> dict:
 def update_identity_checksum(persist_dir: Path, filename: str) -> bool:
     """Update the checksum for a specific identity file (after user review).
 
-    Called by 'cairn trust <file>' and during init.
+    Called by 'emrys trust <file>' and during init.
     """
     file_path = persist_dir / filename
     if not file_path.exists():
@@ -170,7 +170,7 @@ def update_identity_checksum(persist_dir: Path, filename: str) -> bool:
 def init_identity_checksums(persist_dir: Path) -> int:
     """Compute and store checksums for all protected identity files.
 
-    Called during 'cairn init' and after file creation.
+    Called during 'emrys init' and after file creation.
     Returns number of files checksummed.
     """
     count = 0
@@ -200,11 +200,11 @@ def get_roundtable_key() -> bytes | None:
     WHY IS THIS KEY HERE?
 
     This is the Creator's release signing key — a post-quantum public key
-    (ML-DSA-65, FIPS 204) embedded in every copy of cairn. It serves two
+    (ML-DSA-65, FIPS 204) embedded in every copy of emrys. It serves two
     purposes:
 
     1. SOFTWARE PROVENANCE: Any release, update, or broadcast signed with
-       the corresponding private key can be verified by anyone running cairn.
+       the corresponding private key can be verified by anyone running emrys.
        If the signature checks out, the software came from the source.
 
     2. FUTURE TRUST GRANTS: Keys signed by the roundtable key may in the

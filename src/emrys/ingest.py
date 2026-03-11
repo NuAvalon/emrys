@@ -1,4 +1,4 @@
-"""Transcript ingest — parse JSONL transcripts into cairn knowledge.
+"""Transcript ingest — parse JSONL transcripts into emrys knowledge.
 
 Reads JSONL conversation logs, extracts key moments (tool calls, decisions,
 user instructions), and stores them as timestamped knowledge entries.
@@ -19,7 +19,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from cairn_ai.db import get_db, get_persist_dir
+from emrys.db import get_db, get_persist_dir
 
 
 # --- Noise filters ---
@@ -394,7 +394,7 @@ def _get_text_content(record: dict) -> str:
 def import_all_sessions(search_dir: str = "", agent_filter: str = "",
                         dry_run: bool = False, since: str = "",
                         create_journals: bool = True) -> str:
-    """Bulk import Claude Code sessions into cairn memory.
+    """Bulk import Claude Code sessions into emrys memory.
 
     Scans for JSONL session files, deduplicates against already-imported
     sessions, extracts highlights into knowledge + creates journal entries.

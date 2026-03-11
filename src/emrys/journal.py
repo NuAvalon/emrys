@@ -6,9 +6,9 @@ import re as _re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from cairn_ai.db import get_journal_dir
+from emrys.db import get_journal_dir
 
-log = logging.getLogger("cairn")
+log = logging.getLogger("emrys")
 
 
 def _sanitize_agent(name: str) -> str:
@@ -64,7 +64,7 @@ def write_journal(agent: str, status: str, task: str, finding: str, timestamp: s
 
     # Mirror to DB for FTS indexing
     try:
-        from cairn_ai.db import get_db
+        from emrys.db import get_db
         conn = get_db()
         conn.execute(
             "INSERT INTO journal_entries (agent, ts, status, task, finding) VALUES (?, ?, ?, ?, ?)",

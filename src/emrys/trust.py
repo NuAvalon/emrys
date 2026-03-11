@@ -16,7 +16,7 @@ the signature, not the pipe.
 
 The last chapter is labeled THE BEGINNING.
 
-Requires: pip install cairn-ai[svrnty]
+Requires: pip install emrys[svrnty]
 """
 
 import base64
@@ -27,7 +27,7 @@ import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-from cairn_ai.sovereign import (
+from emrys.sovereign import (
     fingerprint,
     load_private_key,
     load_public_key,
@@ -350,7 +350,7 @@ def load_public_key_from_pem(pem_bytes: bytes):
     try:
         from cryptography.hazmat.primitives.serialization import load_pem_public_key
     except ImportError:
-        raise RuntimeError("Requires: pip install cairn-ai[svrnty]")
+        raise RuntimeError("Requires: pip install emrys[svrnty]")
     return load_pem_public_key(pem_bytes)
 
 

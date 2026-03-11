@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "cairn-ai"
-version = "0.3.1"
+name = "emrys"
+version = "0.4.0"
 description = "Persistent memory for AI coding agents — survive compaction, recover from crashes, maintain identity across sessions."
 readme = "README.md"
 license = "Apache-2.0"
@@ -12,7 +12,7 @@ requires-python = ">=3.10"
 authors = [
     { name = "NuAvalon" },
 ]
-keywords = ["mcp", "memory", "agents", "persistence", "cairn", "claude", "cursor", "windsurf", "cline", "ai-agents"]
+keywords = ["mcp", "memory", "agents", "persistence", "emrys", "claude", "cursor", "windsurf", "cline", "ai-agents"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -35,17 +35,17 @@ svrnty = ["cryptography>=42.0", "pqcrypto>=0.4.0"]
 sovereign = ["cryptography>=42.0", "pqcrypto>=0.4.0"]  # alias
 
 [project.scripts]
-cairn = "cairn_ai.cli:main"
+emrys = "emrys.cli:main"
 
 [project.urls]
 Homepage = "https://nuavalon.com"
-Repository = "https://github.com/NuAvalon/cairn-ai"
-Documentation = "https://github.com/NuAvalon/cairn-ai#readme"
-Issues = "https://github.com/NuAvalon/cairn-ai/issues"
+Repository = "https://github.com/NuAvalon/emrys"
+Documentation = "https://github.com/NuAvalon/emrys#readme"
+Issues = "https://github.com/NuAvalon/emrys/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/cairn_ai"]
-artifacts = ["src/cairn_ai/keys/*.bin"]
+packages = ["src/emrys"]
+artifacts = ["src/emrys/keys/*.bin"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

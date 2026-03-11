@@ -1,18 +1,18 @@
-"""Semantic search over cairn knowledge entries.
+"""Semantic search over emrys knowledge entries.
 
 Uses sentence-transformers for embedding and cosine similarity.
 Falls back to FTS5 keyword search if vectors aren't available.
 
-Install: pip install cairn-ai[vectors]
+Install: pip install emrys[vectors]
 """
 
 import logging
 import struct
 from pathlib import Path
 
-from cairn_ai import db
+from emrys import db
 
-log = logging.getLogger("cairn")
+log = logging.getLogger("emrys")
 
 # Default model — small, fast, runs on CPU, good quality
 DEFAULT_MODEL = "all-MiniLM-L6-v2"
@@ -29,7 +29,7 @@ def _get_model():
     except ImportError:
         raise ImportError(
             "Semantic search requires sentence-transformers.\n"
-            "Install with: pip install cairn-ai[vectors]"
+            "Install with: pip install emrys[vectors]"
         )
     log.info("Loading embedding model '%s'...", DEFAULT_MODEL)
     _model = SentenceTransformer(DEFAULT_MODEL)
@@ -150,7 +150,7 @@ def search(
     query_floats = _blob_to_vec(query_vec)
 
     # Fetch all vectors (for small-medium DBs this is fine; for large ones
-    # we'd want an ANN index, but cairn is personal-scale)
+    # we'd want an ANN index, but emrys is personal-scale)
     where_clauses = []
     params = []
     if agent:

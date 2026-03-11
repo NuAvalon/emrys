@@ -1,7 +1,7 @@
 """Post-quantum identity — ML-DSA-65 keys for humans and agents.
 
 Generates ML-DSA-65 keypairs for decentralized webs of trust:
-- Humans create PQ keys (via Soverentity or cairn CLI)
+- Humans create PQ keys (via Soverentity or emrys CLI)
 - Agents get PQ keys linked to their principal's key
 - Anyone can vouch for anyone — no central authority
 - Trust grows organically through human relationships
@@ -28,7 +28,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-log = logging.getLogger("cairn")
+log = logging.getLogger("emrys")
 
 
 # ── Agent operating modes ──
@@ -171,7 +171,7 @@ def pq_sign(name: str, message: bytes, persist_dir: Path) -> bytes | None:
 def pq_verify(public_key_b64: str, message: bytes, signature: bytes) -> bool:
     """Verify a PQ signature against a base64 public key.
 
-    Works with keys from cairn or Soverentity — same ML-DSA-65 format.
+    Works with keys from emrys or Soverentity — same ML-DSA-65 format.
     """
     pq = _require_pq()
     try:
@@ -390,7 +390,7 @@ def auth_gate(agent: str, persist_dir: Path) -> dict:
     # 4. Delegation cert valid?
     delegation_valid = False
     try:
-        from cairn_ai.sovereign import load_delegation_cert, verify_delegation_cert
+        from emrys.sovereign import load_delegation_cert, verify_delegation_cert
         cert = load_delegation_cert(agent, persist_dir)
         if cert:
             result = verify_delegation_cert(cert, persist_dir)
@@ -404,7 +404,7 @@ def auth_gate(agent: str, persist_dir: Path) -> dict:
     # 5. Revocation check
     revoked = False
     try:
-        from cairn_ai.sovereign import is_revoked
+        from emrys.sovereign import is_revoked
         revoked = is_revoked(agent, persist_dir)
         checks["revocation"] = "REVOKED" if revoked else "clear"
     except ImportError:
@@ -492,7 +492,7 @@ def export_for_svrnty(name: str, persist_dir: Path) -> dict | None:
     if pq_data is None:
         return None
 
-    from cairn_ai import __version__
+    from emrys import __version__
 
     return {
         "name": name,
@@ -500,7 +500,7 @@ def export_for_svrnty(name: str, persist_dir: Path) -> dict | None:
         "sig_algorithm": "ML-DSA-65",
         "sig_public_key": pq_data["public_key"],
         "fingerprint": pq_data["fingerprint"],
-        "cairn_version": __version__,
+        "emrys_version": __version__,
     }
 
 
@@ -510,7 +510,7 @@ def export_for_svrnty(name: str, persist_dir: Path) -> dict | None:
 def _audit(action: str, agent: str, detail: str = ""):
     """Write to the sovereign audit log if available, otherwise log."""
     try:
-        from cairn_ai.sovereign import _audit_log
+        from emrys.sovereign import _audit_log
         _audit_log(action, agent, detail)
     except ImportError:
         log.info("[audit] %s | %s | %s", action, agent, detail)

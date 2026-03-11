@@ -4,7 +4,7 @@ import re
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-from cairn_ai.db import get_db, get_journal_dir
+from emrys.db import get_db, get_journal_dir
 
 
 def rotate_journals(agent: str = "", days: int = 7, dry_run: bool = True) -> str:

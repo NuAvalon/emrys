@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Record a cairn demo for the README using asciinema
+# Record a emrys demo for the README using asciinema
 # Usage: bash scripts/record_demo.sh
 # Output: demo.cast (asciinema recording)
 #
@@ -25,34 +25,34 @@ echo \"$ cd my-project\"
 sleep 0.5
 
 echo \"\"
-echo \"$ pip install cairn-ai\"
+echo \"$ pip install emrys-ai\"
 sleep 0.3
-echo \"Successfully installed cairn-ai-0.3.1\"
+echo \"Successfully installed emrys-ai-0.3.1\"
 sleep 0.5
 
 echo \"\"
-echo \"$ cairn init\"
+echo \"$ emrys init\"
 sleep 0.3
-cairn init 2>&1
+emrys init 2>&1
 sleep 1
 
 echo \"\"
-echo \"$ cairn status\"
+echo \"$ emrys status\"
 sleep 0.3
-cairn status 2>&1
+emrys status 2>&1
 sleep 1
 
 echo \"\"
-echo \"$ cairn verify\"
+echo \"$ emrys verify\"
 sleep 0.3
-cairn verify 2>&1
+emrys verify 2>&1
 sleep 1
 
 echo \"\"
 echo \"# Your agent now has persistent memory.\"
 echo \"# Every session builds on the last.\"
 sleep 2
-'" --title "cairn — persistent memory for AI agents" --idle-time-limit 2
+'" --title "emrys — persistent memory for AI agents" --idle-time-limit 2
 
 echo ""
 echo "Recording saved to: $CAST_FILE"

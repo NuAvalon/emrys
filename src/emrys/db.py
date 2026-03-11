@@ -6,7 +6,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-log = logging.getLogger("cairn")
+log = logging.getLogger("emrys")
 
 SCHEMA_VERSION = 4  # Bump when schema changes. Add migration in _MIGRATIONS.
 

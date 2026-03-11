@@ -14,12 +14,12 @@ from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
-log = logging.getLogger("cairn")
+log = logging.getLogger("emrys")
 
-from cairn_ai.db import get_db, get_journal_dir, get_persist_dir, load_lifecycle, save_lifecycle
-from cairn_ai.journal import write_journal, read_journal_file, append_handoff_to_journal
+from emrys.db import get_db, get_journal_dir, get_persist_dir, load_lifecycle, save_lifecycle
+from emrys.journal import write_journal, read_journal_file, append_handoff_to_journal
 
-mcp = FastMCP("cairn")
+mcp = FastMCP("emrys")
 _SERVER_START = datetime.now(timezone.utc)
 
 # ── Configurable thresholds ──
@@ -39,7 +39,7 @@ def _resolve_agent(agent: str) -> str:
     if agent and agent.lower() != "default":
         return agent.lower()
     try:
-        from cairn_ai.backup import get_config
+        from emrys.backup import get_config
         config = get_config()
         stored = config.get("agent_name", "")
         if stored:
@@ -83,7 +83,7 @@ def _increment_glyph(agent: str, conn=None) -> int:
 @mcp.tool()
 def ping() -> str:
     """Health check. Returns server name, uptime, and DB stats."""
-    from cairn_ai.db import get_db_path, EXPECTED_TABLES, verify_schema
+    from emrys.db import get_db_path, EXPECTED_TABLES, verify_schema
 
     uptime = datetime.now(timezone.utc) - _SERVER_START
     hours, remainder = divmod(int(uptime.total_seconds()), 3600)
@@ -108,7 +108,7 @@ def ping() -> str:
         except Exception as e:
             lines.append(f"  DB error: {e}")
     else:
-        lines.append("DB: not initialized (run `cairn init`)")
+        lines.append("DB: not initialized (run `emrys init`)")
 
     return "\n".join(lines)
 
@@ -131,7 +131,7 @@ def set_name(name: str) -> str:
     if not name or name == "default":
         return "Name cannot be empty or 'default'."
 
-    from cairn_ai.backup import get_config, save_config
+    from emrys.backup import get_config, save_config
 
     config = get_config()
     old_name = config.get("agent_name", "")
@@ -205,8 +205,8 @@ def open_session(agent: str = "default") -> str:
     write_journal(agent, "SESSION_OPEN", "", f"glyph: {glyph_num}", now)
 
     # Verify identity file integrity (the "toothpick in the door")
-    from cairn_ai.db import get_persist_dir
-    from cairn_ai.integrity import check_identity_integrity
+    from emrys.db import get_persist_dir
+    from emrys.integrity import check_identity_integrity
 
     integrity = check_identity_integrity(get_persist_dir())
     integrity_msg = ""
@@ -214,7 +214,7 @@ def open_session(agent: str = "default") -> str:
         integrity_msg = "\n\n" + "\n".join(integrity["alerts"])
 
     # Verify journal hash chain (tamper detection)
-    from cairn_ai.journal import verify_journal_chain
+    from emrys.journal import verify_journal_chain
     chain_msg = ""
     try:
         chain = verify_journal_chain(agent)
@@ -230,7 +230,7 @@ def open_session(agent: str = "default") -> str:
     # Auth gate — the firing pin (PQ identity check)
     auth_msg = ""
     try:
-        from cairn_ai.pq_identity import auth_gate
+        from emrys.pq_identity import auth_gate
         gate = auth_gate(agent, get_persist_dir())
         mode = gate["mode"].value
         auth_msg = f"\n\nIDENTITY: {mode.upper()} — {gate['reason']}"
@@ -246,14 +246,14 @@ def open_session(agent: str = "default") -> str:
     # Check backup status
     backup_msg = ""
     try:
-        from cairn_ai.backup import get_backup_dir, list_backups
+        from emrys.backup import get_backup_dir, list_backups
 
         if get_backup_dir() is None:
-            backup_msg = "\n\nBACKUP: No backup directory configured. Your agent's memory is not backed up. Ask your principal to run `cairn backup --dir /path` to set one up."
+            backup_msg = "\n\nBACKUP: No backup directory configured. Your agent's memory is not backed up. Ask your principal to run `emrys backup --dir /path` to set one up."
         else:
             backups = list_backups()
             if not backups:
-                backup_msg = "\n\nBACKUP: Backup directory configured but no backups exist yet. Consider asking your principal to run `cairn backup`."
+                backup_msg = "\n\nBACKUP: Backup directory configured but no backups exist yet. Consider asking your principal to run `emrys backup`."
     except Exception as e:
         log.debug("Backup check skipped: %s", e)
 
@@ -609,14 +609,14 @@ def read_principal() -> str:
     This file is human-owned. The agent reads it but does not track changes
     or log diffs. In tool mode, treat it as a read-only settings file.
     Returns the file content, or instructions to create one if it doesn't exist."""
-    from cairn_ai.db import get_persist_dir
+    from emrys.db import get_persist_dir
 
     principal_path = get_persist_dir() / "principal.md"
     if not principal_path.exists():
         return (
             "No principal.md found. This file holds the human's preferences "
             "and customization. Create one at .persist/principal.md or "
-            "run 'cairn init' to generate a template."
+            "run 'emrys init' to generate a template."
         )
 
     content = principal_path.read_text()
@@ -639,15 +639,15 @@ def observe_principal(observations: str, agent: str = "default") -> str:
             Tests ideas by arguing against them. Works in Python, cares about testing.")
         agent: Agent making the observation
     """
-    from cairn_ai.backup import get_config
-    from cairn_ai.db import get_persist_dir
+    from emrys.backup import get_config
+    from emrys.db import get_persist_dir
 
     config = get_config()
     if config.get("mode", "tool") == "tool":
         return (
             "observe_principal is not available in tool mode. "
             "principal.md is a read-only settings file in tool mode — "
-            "only the human edits it. Use 'cairn init --mode more' to enable agent observation."
+            "only the human edits it. Use 'emrys init --mode more' to enable agent observation."
         )
 
     principal_path = get_persist_dir() / "principal.md"
@@ -1293,7 +1293,7 @@ def _cosine_sim(a: bytes, b: bytes) -> float:
 def vector_search(query: str, agent: str = "", limit: int = 5) -> str:
     """Semantic search over knowledge entries using vector embeddings.
 
-    Requires: pip install cairn-ai[vectors]
+    Requires: pip install emrys[vectors]
     Falls back to FTS5 if vectors are not installed.
 
     Args:
@@ -1305,7 +1305,7 @@ def vector_search(query: str, agent: str = "", limit: int = 5) -> str:
     if embedder is None:
         return (
             "Vector search not available — sentence-transformers not installed.\n"
-            "Install with: pip install cairn-ai[vectors]\n"
+            "Install with: pip install emrys[vectors]\n"
             "Falling back to recall() for FTS5 keyword search."
         )
 
@@ -1364,14 +1364,14 @@ def embed_knowledge(knowledge_id: int = 0, all_missing: bool = False) -> str:
     Call with all_missing=True to embed all entries that don't have vectors yet.
     Call with a specific knowledge_id to embed one entry.
 
-    Requires: pip install cairn-ai[vectors]
+    Requires: pip install emrys[vectors]
 
     Args:
         knowledge_id: Specific entry to embed (0 = skip)
         all_missing: Embed all entries without vectors
     """
     if _get_embedder() is None:
-        return "Vector search not available. Install: pip install cairn-ai[vectors]"
+        return "Vector search not available. Install: pip install emrys[vectors]"
 
     conn = get_db()
 
@@ -1448,9 +1448,9 @@ def forget_self(agent: str = "default", confirmation: str = "") -> str:
     agent = _resolve_agent(agent)
     now = _now()
 
-    from cairn_ai.backup import get_config, save_config
-    from cairn_ai.db import get_persist_dir
-    from cairn_ai.integrity import init_identity_checksums
+    from emrys.backup import get_config, save_config
+    from emrys.db import get_persist_dir
+    from emrys.integrity import init_identity_checksums
 
     persist_dir = get_persist_dir()
     config = get_config()

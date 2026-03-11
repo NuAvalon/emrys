@@ -1,11 +1,11 @@
-"""Sovereign identity — human-rooted trust chain for cairn agents.
+"""Sovereign identity — human-rooted trust chain for emrys agents.
 
 Delegated Authority Model (TLS/CA pattern):
   Human keypair (root) → Delegation cert (scoped, time-limited) → Agent keypair → Signed actions
 
 The human is always the root of trust. Agents derive authority, they don't own it.
 
-Requires: pip install cairn-ai[sovereign]  (cryptography>=42.0)
+Requires: pip install emrys[sovereign]  (cryptography>=42.0)
 """
 
 import hashlib
@@ -15,7 +15,7 @@ import sqlite3
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-from cairn_ai.db import get_db, get_persist_dir
+from emrys.db import get_db, get_persist_dir
 
 
 # ── Key generation ──
@@ -49,7 +49,7 @@ def _require_crypto():
     except ImportError:
         raise RuntimeError(
             "Sovereign features require the cryptography package.\n"
-            "Install with: pip install cairn-ai[sovereign]"
+            "Install with: pip install emrys[sovereign]"
         )
 
 
@@ -76,7 +76,7 @@ def generate_master_keypair(persist_dir: Path) -> tuple[bytes, bytes]:
     if priv_path.exists():
         raise FileExistsError(
             f"Master keypair already exists at {priv_path}. "
-            f"Use 'cairn sovereign-status' to view, or delete manually to regenerate."
+            f"Use 'emrys sovereign-status' to view, or delete manually to regenerate."
         )
 
     keys_dir.mkdir(parents=True, exist_ok=True)
@@ -174,12 +174,12 @@ def create_delegation_cert(
 
     if not master_priv_path.exists():
         raise FileNotFoundError(
-            "Master keypair not found. Run 'cairn init --sovereign' first."
+            "Master keypair not found. Run 'emrys init --sovereign' first."
         )
     if not agent_pub_path.exists():
         raise FileNotFoundError(
             f"Agent keypair not found for '{agent}'. "
-            f"Generate with 'cairn delegate {agent}'."
+            f"Generate with 'emrys delegate {agent}'."
         )
 
     master_key = load_private_key(master_priv_path)
@@ -628,7 +628,7 @@ def backup_keys_encrypted(persist_dir: Path, password: str, backup_path: Path) -
         from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
         from cryptography.hazmat.primitives import hashes
     except ImportError:
-        raise RuntimeError("Key backup requires: pip install cairn-ai[sovereign]")
+        raise RuntimeError("Key backup requires: pip install emrys[sovereign]")
 
     # Derive encryption key from password
     salt = os.urandom(16)
@@ -689,7 +689,7 @@ def restore_keys_encrypted(backup_path: Path, password: str, persist_dir: Path) 
         from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
         from cryptography.hazmat.primitives import hashes
     except ImportError:
-        raise RuntimeError("Key restore requires: pip install cairn-ai[sovereign]")
+        raise RuntimeError("Key restore requires: pip install emrys[sovereign]")
 
     raw = backup_path.read_bytes()
     salt = raw[:16]
