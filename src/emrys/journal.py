@@ -114,8 +114,9 @@ def append_handoff_to_journal(agent: str, handoff_content: str, timestamp: str):
     entry_body = f"\n---\n{handoff_content}\n"
     entry_hash = _hash_entry(prev_hash + entry_body)
 
+    is_new = not journal_file.exists() or journal_file.stat().st_size == 0
     with open(journal_file, "a") as f:
-        if not journal_file.exists() or journal_file.stat().st_size == 0:
+        if is_new:
             f.write(f"# {agent.title()} Journal — {date}\n\n")
         f.write(entry_body + f"<!-- hash:{entry_hash} prev:{prev_hash} -->\n")
 

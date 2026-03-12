@@ -61,7 +61,7 @@ def rotate_journals(agent: str = "", days: int = 7, dry_run: bool = True) -> str
                 conn = get_db()
                 for f in findings:
                     conn.execute(
-                        """INSERT INTO knowledge (agent, ts, title, content, tags, source)
+                        """INSERT INTO knowledge (agent, created_at, title, content, tags, source)
                            VALUES (?, ?, ?, ?, ?, ?)""",
                         (f["agent"], f["ts"], f["title"], f["content"],
                          f["tags"], f"journal:{jf.name}"),

@@ -912,9 +912,9 @@ def store_knowledge(
 
     conn = get_db()
 
-    # Store large content as artifact
+    # Store large content as artifact (threshold matches ingest.py)
     artifact_ref = ""
-    if len(content) > 5000:
+    if len(content) > 10_000:
         import hashlib
 
         artifacts_dir = get_persist_dir() / "artifacts"
@@ -922,7 +922,7 @@ def store_knowledge(
         content_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
         artifact_name = f"{content_hash}.md"
         (artifacts_dir / artifact_name).write_text(content)
-        stored_content = content[:500] + f"\n\n[Full content: artifacts/{artifact_name}]"
+        stored_content = content[:5000] + f"\n\n[Full content: artifacts/{artifact_name}]"
         artifact_ref = f" (full text in artifacts/{artifact_name})"
     else:
         stored_content = content
