@@ -12,7 +12,7 @@ build/
 .keys/
 
 # Testing
-tests/
+# tests/ — kept in repo for CI
 
 # Internal docs
 PITCH.md
