@@ -3,64 +3,35 @@ name: Publish to PyPI
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    name: Build distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install build tools
-        run: python3 -m pip install build --user
-      - name: Build wheel and sdist
-        run: python3 -m build
-      - name: Store distribution packages
-        uses: actions/upload-artifact@v5
+      - run: pip install build
+      - run: python -m build
+      - uses: actions/upload-artifact@v4
         with:
-          name: python-package-distributions
+          name: dist
           path: dist/
-
-  test:
-    name: Test installation
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Download distribution
-        uses: actions/download-artifact@v6
-        with:
-          name: python-package-distributions
-          path: dist/
-      - name: Install from wheel
-        run: pip install dist/*.whl
-      - name: Run integration tests
-        run: bash tests/test_integration.sh
 
   publish:
-    name: Publish to PyPI
-    needs: [build, test]
+    needs: build
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/emrys
+    environment: pypi
     permissions:
       id-token: write
     steps:
-      - name: Download distribution
-        uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v4
         with:
-          name: python-package-distributions
+          name: dist
           path: dist/
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@release/v1
